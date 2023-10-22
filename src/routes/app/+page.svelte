@@ -11,6 +11,6 @@ Welcome, {data.username}
 	<button type="submit">kick off example job</button>
 </form>
 
-{#if form?.job}
-	{form.job}
+{#if form?.jobId}
+	{form.jobId}
 {/if}

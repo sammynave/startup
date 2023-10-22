@@ -34,7 +34,35 @@ new feature example flow:
 2. `pnpm db:generate` to generate a new migration
 3. `pnpm db:migrate` to sync the db schema with our schema definition
 
-# Background workers via Bull
+# Background workers via Faktory
+
+Running `docker-compose up` will start a [Faktory](https://contribsys.com/faktory/) job server
+
+The Faktory dashboard can be found here: http://localhost:7420
+
+Jobs (a.k.a producers) can be added in `src/lib/server/jobs`
+
+Workers (a.k.a consumers) can be added in `src/lib/server/workers`.
+
+You can kick off an example job with the `send job` button in the `/app` route
+
+
+## Using Faktory locally
+
+This is kind of a budget background job set up for dev but it works 🤷‍♂️
+
+- 1. Make sure you `docker-compose up`ed
+- 2. Open new terminal and run `pnpm dev:worker`. you can pass optionally pas `--workers 2` (or any number) to have more than one worker going
+
+NOTE: if you pass `--workers <num>` the apps will spin up starting on port `5174` and increment for each worker. so `--workers 3` will have 3 processes: `http://localhost:5174`, `http://localhost:5175`, and `http://localhost:5176`
+
+Running `pnpm dev:worker` will spin up an instance of the sveltekit app in "worker mode" (i.e. `WORKER=true` env var is set), then it will make a `curl` request to manually trigger the code in `hooks.server.ts` to load the worker file. Once the worker file is loaded, it registers itself with the Faktory server and starts pulling jobs off of the queue. The `curl` request is necessary in local dev because the code in `hooks.server.ts` isn't loaded until a request to the app as made. As far as I know, there is no `afterInit` or `afterAppBoot` or any way to hook into the boot up process in dev. This shouldn't be a problem when the app is built for production, as long as you build the worker with `pnpm build:worker`.
+
+This is good in the sense that we can write our worker code side-by-side with our app code, share the build process, and share all of the same classes, functions, etc... (like Sidekiq and Rails) but kind of annoying to have had to create and maintain `dev-worker.js`.
+
+IMPORTANT: when you're working on `worker` code, you'll notice that `hmr` doesn't work. You'll need to stop and re-`pnpm dev:worker` every time you change code and want to try it out. I'm not sure how to get around this since the Faktory workers are singletons and can only be registered once. Maybe `vite` has a way to run arbitrary code on reload and the Faktory node client has a way to remove jobs from the [registry](https://github.com/jbielick/faktory_worker_node/blob/main/docs/api.md#Registry) then re-add them.
+
+Or maybe it's better to define the workers outside of the SvelteKit app and run them directly (e.g. `node ./workers/worker.js`). The problem there is we lose the ability to import functions from the app. We'll have to write some config to deal with that and it seems like a pain. I'll look into it someday.
 
 ## Developing
 

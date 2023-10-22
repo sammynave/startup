@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from '../$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { auth } from '$lib/server/lucia';
-import { exampleQueue } from '$lib/workers/example-queue.js';
+import { enqueue, exampleQueue } from '$lib/server/jobs/example-job.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const session = await locals.auth.validate();
@@ -25,10 +25,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions = {
 	'example-job': async ({ request }) => {
-		const job = await exampleQueue.add({ foo: 'bar' });
-		console.log({ job });
+		const jobId = await enqueue({ exampleArg: 'hello!' });
+		console.log({ jobId });
 		return {
-			job: 'done'
+			jobId
 		};
 	},
 	'sign-out': async ({ locals }) => {

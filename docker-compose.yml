@@ -9,10 +9,14 @@ services:
       - postgres-data:/var/lib/postgresql/data
     env_file:
       - .env
-  redis:
-    image: redis
+  jobs:
+    image: contribsys/faktory:latest
+    command: ./faktory -b :7419 -w :7420 -l debug
+    env_file:
+      - .env
     ports:
-      - '6379:6379'
+      - '7419:7419'
+      - '7420:7420'
 
 # create local volume for postgres data to persist through computer restarts
 volumes:
