@@ -1,5 +1,10 @@
 import { auth } from '$lib/server/lucia.js';
 import { redirect, type Handle } from '@sveltejs/kit';
+import { initExampleQueue } from '$lib/workers/example-queue.js';
+
+if (process.env.WORKER) {
+	initExampleQueue();
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.auth = auth.handleRequest(event);

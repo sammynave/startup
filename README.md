@@ -34,6 +34,8 @@ new feature example flow:
 2. `pnpm db:generate` to generate a new migration
 3. `pnpm db:migrate` to sync the db schema with our schema definition
 
+# Background workers via Bull
+
 ## Developing
 
 Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
