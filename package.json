@@ -4,6 +4,8 @@
 	"private": true,
 	"scripts": {
 		"dev": "vite dev",
+		"dev:worker": "node ./dev-worker.js",
+		"build:worker": "WORKER=true vite build",
 		"build": "vite build",
 		"preview": "vite preview",
 		"test": "npm run test:integration && npm run test:unit",
@@ -42,6 +44,7 @@
 	"dependencies": {
 		"@lucia-auth/adapter-postgresql": "^2.0.1",
 		"drizzle-orm": "^0.28.6",
+		"faktory-worker": "^4.5.1",
 		"lucia": "^2.7.1",
 		"postgres": "^3.4.0"
 	}

@@ -1,5 +1,10 @@
 import { auth } from '$lib/server/lucia.js';
 import { redirect, type Handle } from '@sveltejs/kit';
+import { register } from '$lib/server/workers/example-worker.js';
+
+if (process.env.WORKER) {
+	await register();
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.auth = auth.handleRequest(event);
