@@ -1,11 +1,17 @@
 # Getting started
 
 1. `npx degit sammynave/startup <directory_name>`
-2. `pnpm i` (or npm or yarn or whatever)
-3. start your docker container runtime then `docker-compose up` to build and start docker file (try out [colima](https://github.com/abiosoft/colima) if you're fed up with the macos docker app)
-4. `pnpm dev` to start the server
-5. visit http://localhost:5173/sign-up to make sure sign up is working
-6. start building!
+2. `pnpm i` (or `npm` or `yarn` or whatever)
+3. create a `.env` file base on `.env.example` and replace the values
+4. start your docker container runtime then `docker-compose up` to build and start docker file (try out [colima](https://github.com/abiosoft/colima) if you're fed up with the macos docker app)
+5. to execute `psql` in your docker container run: `docker exec -it startup-db-1 psql -U postgres`. NOTE: if you changed the values in `.env`, replace `-U postgres` in the previous command with with `-U <POSTGRES_USER>` and replace `startup-db-1` with `<directory_name>-db-1` from step 1.
+6. once in `psql` run: `create database startup;` or whatever you want to call it. NOTE: make sure this matches the last segment of your `DATABASE_URL` value in `.env`
+7. type `\q` to exit `psql`
+8. `pnpm db:generate` to generate migrations from `src/lib/server/db/schema.ts`
+9. `pnpm db:migrate` to apply the migrations to the database
+10. `pnpm dev` to start the server
+11. visit http://localhost:5173/sign-up to make sure sign up is working
+12. start building!
 
 # Auth
 
@@ -27,22 +33,6 @@ new feature example flow:
 1. update `schema.ts` with new table
 2. `pnpm db:generate` to generate a new migration
 3. `pnpm db:migrate` to sync the db schema with our schema definition
-
-# create-svelte
-
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
-
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
-```
 
 ## Developing
 
