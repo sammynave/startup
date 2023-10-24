@@ -1,3 +1,12 @@
+# TODO
+
+- [ ] responsive breakpoints
+- [x] settings page (update username/password)
+- [ ] deploy scripts and config (render.com?)
+- [ ] twilio
+- [ ] sendgrid
+- [ ] payment (stripe?)
+
 # Getting started
 
 1. `npx degit sammynave/startup <directory_name>`
@@ -34,6 +43,16 @@ new feature example flow:
 2. `pnpm db:generate` to generate a new migration
 3. `pnpm db:migrate` to sync the db schema with our schema definition
 
+# UI components via shadcn-svelte
+
+shadcn-svelte components can be added to the project (and updated) via the CLI - example: `pnpx shadcn-svelte@latest add Card`
+
+They will be added to the `src/lib/components/ui` directory
+
+see [CLI commands](https://www.shadcn-svelte.com/docs/cli) for more info
+
+shadcn-svelte uses [tailwindcss](https://tailwindcss.com/) for [theming](https://www.shadcn-svelte.com/docs/theming). The default theme values are in `src/app.postcss`
+
 # Background workers via Faktory
 
 Running `docker-compose up` will start a [Faktory](https://contribsys.com/faktory/) job server
@@ -45,7 +64,6 @@ Jobs (a.k.a producers) can be added in `src/lib/server/jobs`
 Workers (a.k.a consumers) can be added in `src/lib/server/workers`.
 
 You can kick off an example job with the `send job` button in the `/app` route
-
 
 ## Using Faktory locally
 
@@ -69,10 +87,7 @@ Or maybe it's better to define the workers outside of the SvelteKit app and run 
 Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
 ```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+pnpm dev
 ```
 
 ## Building
@@ -80,9 +95,9 @@ npm run dev -- --open
 To create a production version of your app:
 
 ```bash
-npm run build
+pnpm build
 ```
 
-You can preview the production build with `npm run preview`.
+You can preview the production build with `npm preview`.
 
 > To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
