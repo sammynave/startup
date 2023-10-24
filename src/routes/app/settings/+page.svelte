@@ -23,13 +23,13 @@
 	}
 </script>
 
-<Card.Root>
+<Card.Root class="min-w-min sm:w-[380px] mx-auto border-none shadow-none">
 	<Card.Header>
 		<Card.Title>Settings</Card.Title>
 		<Separator />
 	</Card.Header>
 	<Card.Content>
-		<Tabs.Root onValueChange={setTab} value={tab} class="w-[400px]">
+		<Tabs.Root onValueChange={setTab} value={tab} class="sm:w-[380px]">
 			<Tabs.List class="grid w-full grid-cols-2" autofocus>
 				<Tabs.Trigger value="username">Username</Tabs.Trigger>
 				<Tabs.Trigger value="password">Password</Tabs.Trigger>
