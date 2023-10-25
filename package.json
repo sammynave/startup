@@ -12,6 +12,7 @@
 		"dev:worker": "node ./dev-worker.js",
 		"build:worker": "WORKER=true vite build",
 		"build": "vite build",
+		"build:render": "source ./render-build.sh",
 		"preview": "vite preview",
 		"test": "npm run test:integration && npm run test:unit",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
