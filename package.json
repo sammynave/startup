@@ -48,6 +48,7 @@
 	"type": "module",
 	"dependencies": {
 		"@lucia-auth/adapter-postgresql": "^2.0.1",
+		"@sendgrid/mail": "^7.7.0",
 		"bits-ui": "^0.6.2",
 		"clsx": "^2.0.0",
 		"drizzle-orm": "^0.28.6",
