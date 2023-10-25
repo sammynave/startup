@@ -2,7 +2,7 @@ services:
   # A Node web service
   - type: web
     name: startup-web
-    plan: free
+    plan: starter
     runtime: node
     repo: https://github.com/sammynave/startup.git
     healthCheckPath: /200
@@ -24,13 +24,13 @@ services:
           name: startup-faktory
           property: host
 
-  - type: worker
+  - type: web
     name: startup-worker
     plan: starter
     runtime: node
     repo: https://github.com/sammynave/startup.git
     buildCommand: pnpm build:render
-    startCommand: node build/index.js
+    startCommand: node build/index.js > /dev/null 2>&1 &
     envVars:
       - key: WORKER
         value: true
