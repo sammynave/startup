@@ -14,49 +14,51 @@ services:
           name: startup-db
           property: connectionString
       - key: PUBLIC_FAKTORY_URL
-        fromService:
-          type: pserv
-          name: startup-faktory
-          property: host
-      - key: FAKTORY_URL
-        fromService:
-          type: pserv
-          name: startup-faktory
-          property: host
+        value: '127.0.0.1'
+      # - key: PUBLIC_FAKTORY_URL
+      #   fromService:
+      #     type: pserv
+      #     name: startup-faktory
+      #     property: host
+      # - key: FAKTORY_URL
+      #   fromService:
+      #     type: pserv
+      #     name: startup-faktory
+      #     property: host
 
-  - type: web
-    name: startup-worker
-    plan: starter
-    runtime: node
-    repo: https://github.com/sammynave/startup.git
-    buildCommand: pnpm build:render
-    startCommand: node build/index.js > /dev/null 2>&1 &
-    envVars:
-      - key: WORKER
-        value: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: startup-db
-          property: connectionString
-      - key: PUBLIC_FAKTORY_URL
-        fromService:
-          type: pserv
-          name: startup-faktory
-          property: host
-      - key: FAKTORY_URL
-        fromService:
-          type: pserv
-          name: startup-faktory
-          property: host
+  # - type: web
+  #   name: startup-worker
+  #   plan: starter
+  #   runtime: node
+  #   repo: https://github.com/sammynave/startup.git
+  #   buildCommand: pnpm build:render
+  #   startCommand: node build/index.js > /dev/null 2>&1 &
+  #   envVars:
+  #     - key: WORKER
+  #       value: true
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: startup-db
+  #         property: connectionString
+  #     - key: PUBLIC_FAKTORY_URL
+  #       fromService:
+  #         type: pserv
+  #         name: startup-faktory
+  #         property: host
+  #     - key: FAKTORY_URL
+  #       fromService:
+  #         type: pserv
+  #         name: startup-faktory
+  #         property: host
 
-  - type: pserv
-    name: startup-faktory
-    plan: starter
-    runtime: docker
-    # url: docker.io/contribsys/faktory:latest
-    repo: https://github.com/contribsys/faktory-render
-    envVars:
-      - fromGroup: startup-env
+  # - type: pserv
+  #   name: startup-faktory
+  #   plan: starter
+  #   runtime: docker
+  #   # url: docker.io/contribsys/faktory:latest
+  #   repo: https://github.com/contribsys/faktory-render
+  #   envVars:
+  #     - fromGroup: startup-env
 
 databases:
   - name: startup-db
