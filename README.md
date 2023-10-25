@@ -13,7 +13,7 @@
 2. `pnpm i` (or `npm` or `yarn` or whatever)
 3. create a `.env` file base on `.env.example` and replace the values
 4. start your docker container runtime then `docker-compose up` to build and start docker file (try out [colima](https://github.com/abiosoft/colima) if you're fed up with the macos docker app)
-5. to execute `psql` in your docker container run: `docker exec -it startup-db-1 psql -U postgres`. NOTE: if you changed the values in `.env`, replace `-U postgres` in the previous command with with `-U <POSTGRES_USER>` and replace `startup-db-1` with `<directory_name>-db-1` from step 1.
+5. to execute `psql` in your docker container run: `docker exec -it startup-db-1 psql -U postgres`. NOTE: if you changed the values in `.env`, replace `-U postgres` in the previous command with with `-U <your postgres user>` and replace `startup-db-1` with `<directory_name>-db-1` from step 1.
 6. once in `psql` run: `create database startup;` or whatever you want to call it. NOTE: make sure this matches the last segment of your `DATABASE_URL` value in `.env`
 7. type `\q` to exit `psql`
 8. `pnpm db:generate` to generate migrations from `src/lib/server/db/schema.ts`
@@ -52,6 +52,14 @@ They will be added to the `src/lib/components/ui` directory
 see [CLI commands](https://www.shadcn-svelte.com/docs/cli) for more info
 
 shadcn-svelte uses [tailwindcss](https://tailwindcss.com/) for [theming](https://www.shadcn-svelte.com/docs/theming). The default theme values are in `src/app.postcss`
+
+# Deploying to Render.com
+
+You can use the existing `render.yaml` to spin up a free web service and free database. Create your render account then in `Blueprints`, sync it with your repo.
+
+You'll also need to create an `Env Group` to store the env `PUBLIC_FAKTORY_URL` since that's used in the app. If you don't need the worker, you can delete the example route `src/routes/app/example-background-job` and skip this step
+
+See the [Render docs](https://render.com/docs/blueprint-spec) for more info
 
 # Background workers via Faktory
 
