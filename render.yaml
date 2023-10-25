@@ -30,7 +30,7 @@ services:
     runtime: node
     repo: https://github.com/sammynave/startup.git
     buildCommand: pnpm build:render
-    startCommand: node build/index.js > /dev/null 2>&1 &
+    startCommand: node build/index.js
     envVars:
       - key: WORKER
         value: true
