@@ -2,7 +2,7 @@ services:
   # A Node web service
   - type: web
     name: startup-web
-    plan: starter
+    plan: free
     runtime: node
     repo: https://github.com/sammynave/startup.git
     healthCheckPath: /200
