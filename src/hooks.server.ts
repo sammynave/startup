@@ -1,8 +1,9 @@
 import { auth } from '$lib/server/lucia.js';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { register } from '$lib/server/workers/example-worker.js';
+import { building } from '$app/environment';
 
-if (process.env.WORKER) {
+if (process.env.WORKER && !building) {
 	await register();
 }
 
