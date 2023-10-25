@@ -53,8 +53,8 @@ services:
     name: startup-faktory
     plan: starter
     runtime: docker
-    image:
-      url: docker.io/contribsys/faktory:latest
+    # url: docker.io/contribsys/faktory:latest
+    repo: https://github.com/contribsys/faktory-render
     envVars:
       - fromGroup: startup-env
 
