@@ -15,18 +15,18 @@ services:
           property: connectionString
       - key: PUBLIC_FAKTORY_URL
         fromService:
-          type: pserv
+          type: web
           name: startup-faktory
           property: host
       - key: FAKTORY_URL
         fromService:
-          type: pserv
+          type: web
           name: startup-faktory
           property: host
 
   - type: worker
     name: startup-worker
-    plan: free
+    plan: starter
     runtime: node
     repo: https://github.com/sammynave/startup.git
     buildCommand: pnpm build:render
@@ -38,15 +38,21 @@ services:
         fromDatabase:
           name: startup-db
           property: connectionString
+      - key: PUBLIC_FAKTORY_URL
+        fromService:
+          type: web
+          name: startup-faktory
+          property: host
       - key: FAKTORY_URL
         fromService:
-          type: pserv
+          type: web
           name: startup-faktory
           property: host
 
-  - type: pserv
+  - type: web
     name: startup-faktory
-    runtime: image
+    plan: starter
+    runtime: docker
     image:
       url: docker.io/contribsys/faktory:latest
     envVars:
