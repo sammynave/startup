@@ -9,7 +9,7 @@
 	export let form;
 </script>
 
-<Card.Root class="min-w-min sm:w-[380px] mx-auto">
+<Card.Root class="min-w-min sm:w-[380px] mx-auto border-none shadow-none">
 	<Card.Header>
 		<Card.Title>Example background job</Card.Title>
 		<Separator />

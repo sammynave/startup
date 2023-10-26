@@ -1,4 +1,8 @@
 // See https://kit.svelte.dev/docs/types#app
+
+import type { userRoles } from '$lib/server/db/schema';
+import type { Session } from 'lucia';
+
 // for information about these interfaces
 declare global {
 	namespace App {
@@ -7,9 +11,12 @@ declare global {
 		// interface Platform {}
 		interface Locals {
 			auth: import('lucia').AuthRequest;
+			user: Session['user'];
 		}
 	}
 }
+
+type UserRoles = (typeof userRoles)['role']['enumValues'][number];
 
 /// <reference types="lucia" />
 declare global {
@@ -17,8 +24,8 @@ declare global {
 		type Auth = import('$lib/server/lucia').Auth;
 		type DatabaseUserAttributes = {
 			username: string;
+			roles: UserRoles[];
 		};
-		type DatabaseSessionAttributes = Record<string, never>;
 	}
 }
 

@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "pg",
-  "id": "d09f9a50-9b6a-403a-846a-302527b0074c",
+  "id": "3f528794-66c0-4d67-93c4-34e32f2396d4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "user_keys": {
@@ -10,19 +10,19 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "varchar(255)",
           "primaryKey": true,
           "notNull": true
         },
         "user_id": {
           "name": "user_id",
-          "type": "text",
+          "type": "varchar(15)",
           "primaryKey": false,
           "notNull": true
         },
         "hashed_password": {
           "name": "hashed_password",
-          "type": "text",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         }
@@ -52,13 +52,13 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "varchar(128)",
           "primaryKey": true,
           "notNull": true
         },
         "user_id": {
           "name": "user_id",
-          "type": "text",
+          "type": "varchar(15)",
           "primaryKey": false,
           "notNull": true
         },
@@ -100,15 +100,22 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "varchar(15)",
           "primaryKey": true,
           "notNull": true
         },
         "username": {
           "name": "username",
-          "type": "text",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": true
+        },
+        "roles": {
+          "name": "roles",
+          "type": "role[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{user}'"
         },
         "created_at": {
           "name": "created_at",
@@ -139,7 +146,15 @@
       }
     }
   },
-  "enums": {},
+  "enums": {
+    "role": {
+      "name": "role",
+      "values": {
+        "user": "user",
+        "admin": "admin"
+      }
+    }
+  },
   "schemas": {},
   "_meta": {
     "schemas": {},

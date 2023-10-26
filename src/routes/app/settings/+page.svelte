@@ -29,7 +29,7 @@
 		<Separator />
 	</Card.Header>
 	<Card.Content>
-		<Tabs.Root onValueChange={setTab} value={tab} class="sm:w-[380px]">
+		<Tabs.Root onValueChange={setTab} value={tab} class="sm:w-full">
 			<Tabs.List class="grid w-full grid-cols-2" autofocus>
 				<Tabs.Trigger value="username">Username</Tabs.Trigger>
 				<Tabs.Trigger value="password">Password</Tabs.Trigger>

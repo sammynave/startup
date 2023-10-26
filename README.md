@@ -26,6 +26,8 @@
 
 Username and password authentication provided by [Lucia](https://lucia-auth.com/). Lucia also supports OAuth. Here's an example using [GitHub](https://lucia-auth.com/guidebook/github-oauth/sveltekit/) if you want to do that
 
+There are two roles available to a User: `user` and `admin`. Users can have one or both. The app is set up so any routes created under `/app/admin` will require the logged in user to have the role `admin`
+
 # Database migrations
 
 commands

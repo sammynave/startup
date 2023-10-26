@@ -1,16 +1,12 @@
 import { db } from '$lib/server/db';
 import { users } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import type { PageServerLoad } from '../$types';
+import type { PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { auth } from '$lib/server/lucia';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const session = await locals.auth.validate();
-	const userId = session?.user?.userId;
-	if (!userId) {
-		throw redirect(302, '/sign-in');
-	}
+	const { userId } = locals.user;
 	const result = await db.query.users.findFirst({
 		columns: { username: true },
 		where: eq(users.id, userId)
