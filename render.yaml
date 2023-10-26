@@ -66,8 +66,6 @@ services:
 # startup-env group example
 # FAKTORY_PASSWORD=some_password
 # FAKTORY_URL=tcp://:some_password@startup-faktory:7419
-#             tcp://:some_password@startup-faktory:7419
-#             tcp://:some_password@startup-faktory:7419
 # PUBLIC_FAKTORY_URL=https://startup-faktory.onrender.com # or whatever your startup-faktory UI ends up being
 
 databases:
