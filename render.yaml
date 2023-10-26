@@ -1,3 +1,27 @@
+# # FREE version with no workers
+# services:
+#   # A Node web service
+#   - type: web
+#     name: startup-web
+#     plan: free
+#     runtime: node
+#     repo: https://github.com/sammynave/startup.git
+#     healthCheckPath: /200
+#     buildCommand: pnpm build:render
+#     startCommand: node build/index.js
+#     envVars:
+#       - key: DATABASE_URL
+#         fromDatabase:
+#           name: startup-db
+#           property: connectionString
+#       - fromGroup: startup-env
+# databases:
+#   - name: startup-db
+#     plan: free
+
+# $7/month version with background worker. the faktory job server has two processes running,
+# the web UI on http and the job processor on tcp. free tier doesn't support that so it needs
+# to be at least starter tier
 services:
   # A Node web service
   - type: web
@@ -13,52 +37,38 @@ services:
         fromDatabase:
           name: startup-db
           property: connectionString
-      - key: PUBLIC_FAKTORY_URL
-        value: '127.0.0.1'
-      # - key: PUBLIC_FAKTORY_URL
-      #   fromService:
-      #     type: pserv
-      #     name: startup-faktory
-      #     property: host
-      # - key: FAKTORY_URL
-      #   fromService:
-      #     type: pserv
-      #     name: startup-faktory
-      #     property: host
+      - fromGroup: startup-env
 
-  # - type: web
-  #   name: startup-worker
-  #   plan: starter
-  #   runtime: node
-  #   repo: https://github.com/sammynave/startup.git
-  #   buildCommand: pnpm build:render
-  #   startCommand: node build/index.js > /dev/null 2>&1 &
-  #   envVars:
-  #     - key: WORKER
-  #       value: true
-  #     - key: DATABASE_URL
-  #       fromDatabase:
-  #         name: startup-db
-  #         property: connectionString
-  #     - key: PUBLIC_FAKTORY_URL
-  #       fromService:
-  #         type: pserv
-  #         name: startup-faktory
-  #         property: host
-  #     - key: FAKTORY_URL
-  #       fromService:
-  #         type: pserv
-  #         name: startup-faktory
-  #         property: host
+  - type: web
+    name: startup-worker
+    plan: free
+    runtime: node
+    repo: https://github.com/sammynave/startup.git
+    buildCommand: pnpm build:render
+    startCommand: node build/index.js
+    envVars:
+      - key: WORKER
+        value: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: startup-db
+          property: connectionString
+      - fromGroup: startup-env
 
-  # - type: pserv
-  #   name: startup-faktory
-  #   plan: starter
-  #   runtime: docker
-  #   # url: docker.io/contribsys/faktory:latest
-  #   repo: https://github.com/contribsys/faktory-render
-  #   envVars:
-  #     - fromGroup: startup-env
+  - type: web
+    name: startup-faktory
+    plan: starter
+    runtime: docker
+    repo: https://github.com/contribsys/faktory-render
+    envVars:
+      - fromGroup: startup-env
+
+# startup-env group example
+# FAKTORY_PASSWORD=some_password
+# FAKTORY_URL=tcp://:some_password@startup-faktory:7419
+#             tcp://:some_password@startup-faktory:7419
+#             tcp://:some_password@startup-faktory:7419
+# PUBLIC_FAKTORY_URL=https://startup-faktory.onrender.com # or whatever your startup-faktory UI ends up being
 
 databases:
   - name: startup-db
