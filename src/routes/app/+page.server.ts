@@ -3,7 +3,7 @@ import { users } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
-import { auth } from '$lib/server/lucia';
+import { auth } from '$lib/server/lucia.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { userId } = locals.user;

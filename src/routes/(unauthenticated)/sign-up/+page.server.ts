@@ -1,10 +1,10 @@
-import { auth } from '$lib/server/lucia.js';
 import { fail, redirect, type Actions } from '@sveltejs/kit';
 import { setError, superValidate } from 'sveltekit-superforms/server';
 import { formSchema } from './schema';
 import postgres from 'postgres';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
+import { signUp } from '$lib/server/lucia.js';
 
 export const load: PageServerLoad = async () => {
 	const form = await superValidate(formSchema);
@@ -21,22 +21,11 @@ export const actions: Actions = {
 
 		try {
 			await db.transaction(async () => {
-				const user = await auth.createUser({
-					key: {
-						providerId: 'username', // auth method
-						providerUserId: form.data.username.toLowerCase(), // unique id when using "username" auth method
-						password: form.data.password // hashed by Lucia
-					},
-					attributes: {
-						username: form.data.username,
-						roles: ['user']
-					}
+				const session = await signUp({
+					username: form.data.username,
+					password: form.data.password
 				});
-				const session = await auth.createSession({
-					userId: user.userId,
-					attributes: {}
-				});
-				locals.auth.setSession(session); // set session cookie
+				locals.auth.setSession(session);
 			});
 		} catch (e) {
 			if (e instanceof postgres.PostgresError) {
@@ -52,6 +41,6 @@ export const actions: Actions = {
 		}
 		// redirect to
 		// make sure you don't throw inside a try/catch block!
-		throw redirect(302, '/');
+		throw redirect(302, '/app');
 	}
 };

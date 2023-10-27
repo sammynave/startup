@@ -21,7 +21,7 @@ type UserRoles = (typeof userRoles)['role']['enumValues'][number];
 /// <reference types="lucia" />
 declare global {
 	namespace Lucia {
-		type Auth = import('$lib/server/lucia').Auth;
+		type Auth = import('$lib/server/lucia.js').Auth;
 		type DatabaseUserAttributes = {
 			username: string;
 			roles: UserRoles[];
