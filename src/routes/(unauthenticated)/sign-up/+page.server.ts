@@ -4,6 +4,7 @@ import { setError, superValidate } from 'sveltekit-superforms/server';
 import { formSchema } from './schema';
 import postgres from 'postgres';
 import type { PageServerLoad } from './$types';
+import { db } from '$lib/server/db';
 
 export const load: PageServerLoad = async () => {
 	const form = await superValidate(formSchema);
@@ -19,21 +20,24 @@ export const actions: Actions = {
 		}
 
 		try {
-			const user = await auth.createUser({
-				key: {
-					providerId: 'username', // auth method
-					providerUserId: form.data.username.toLowerCase(), // unique id when using "username" auth method
-					password: form.data.password // hashed by Lucia
-				},
-				attributes: {
-					username: form.data.username
-				}
+			await db.transaction(async () => {
+				const user = await auth.createUser({
+					key: {
+						providerId: 'username', // auth method
+						providerUserId: form.data.username.toLowerCase(), // unique id when using "username" auth method
+						password: form.data.password // hashed by Lucia
+					},
+					attributes: {
+						username: form.data.username,
+						roles: ['user']
+					}
+				});
+				const session = await auth.createSession({
+					userId: user.userId,
+					attributes: {}
+				});
+				locals.auth.setSession(session); // set session cookie
 			});
-			const session = await auth.createSession({
-				userId: user.userId,
-				attributes: {}
-			});
-			locals.auth.setSession(session); // set session cookie
 		} catch (e) {
 			if (e instanceof postgres.PostgresError) {
 				if (e.code === '23505') {

@@ -6,10 +6,12 @@
 	import Nav from '$lib/components/nav.svelte';
 	import * as Sheet from '$lib/components/ui/sheet';
 
+	export let data;
 	let screenSize: number;
 
 	$: smallScreen = screenSize < 640;
 	$: routeId = $page.route.id;
+	$: isAdmin = data.isAdmin;
 </script>
 
 <svelte:window bind:innerWidth={screenSize} />
@@ -34,6 +36,16 @@
 							href="/app">Dashboard</Button
 						>
 					</Sheet.Close>
+					{#if isAdmin}
+						<Sheet.Close asChild let:builder>
+							<Button
+								builders={[builder]}
+								class={(routeId === '/app/admin' ? 'underline ' : ' ') + 'w-full justify-start'}
+								variant="link"
+								href="/app/admin">Admin</Button
+							>
+						</Sheet.Close>
+					{/if}
 					<Sheet.Close asChild let:builder>
 						<Button
 							builders={[builder]}
@@ -61,6 +73,11 @@
 		<Button class={routeId === '/app' ? 'underline' : ''} variant="link" href="/app"
 			>Dashboard</Button
 		>
+		{#if isAdmin}
+			<Button class={routeId === '/app/admin' ? 'underline' : ''} variant="link" href="/app/admin"
+				>Admin</Button
+			>
+		{/if}
 		<Button
 			class={routeId === '/app/example-background-job' ? 'underline' : ''}
 			variant="link"

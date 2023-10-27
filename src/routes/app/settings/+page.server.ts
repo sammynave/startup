@@ -12,11 +12,7 @@ import { eq } from 'drizzle-orm';
 import { LuciaError } from 'lucia';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const session = await locals.auth.validate();
-	if (!session) {
-		throw redirect(302, '/sign-in');
-	}
-	const { userId } = session.user;
+	const { userId } = locals.user;
 	const usernameForm = await superValidate(usernameSchema);
 	const passwordForm = await superValidate(passwordSchema);
 
@@ -38,12 +34,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	'change-username': async ({ request, locals }) => {
-		const session = await locals.auth.validate();
-		if (!session) {
-			throw redirect(302, '/sign-in');
-		}
-
-		const { userId } = session.user;
+		const { userId } = locals.user;
 
 		const form = await superValidate(request, usernameSchema);
 		if (!form.valid) {
@@ -59,24 +50,29 @@ export const actions: Actions = {
 		}
 
 		try {
-			const newUsername = await db.transaction(async () => {
-				const [{ username: newUsername }] = await db
-					.update(users)
-					.set({ username: form.data.username })
-					.where(eq(users.id, userId))
-					.returning({ username: users.username });
-
-				await db
-					.update(userKeys)
-					.set({ id: `username:${form.data.username}` })
-					.where(eq(userKeys.id, `username:${oldUserName?.username}`))
-					.returning({ id: userKeys.id });
-
-				return newUsername;
+			const user = await auth.updateUserAttributes(userId, {
+				username: form.data.username
 			});
 
-			return message(form, `Username updated to ${newUsername}`);
+			// TODO: what is the lucia way to do this? https://github.com/lucia-auth/lucia/issues/1215
+			// seems like i'm doing something wrong
+			await db
+				.update(userKeys)
+				.set({ id: `username:${form.data.username.toLowerCase()}` })
+				.where(eq(userKeys.id, `username:${oldUserName?.username}`))
+				.returning({ id: userKeys.id });
+
+			await auth.invalidateAllUserSessions(user.userId);
+			const session = await auth.createSession({
+				userId: user.userId,
+				attributes: {}
+			});
+
+			locals.auth.setSession(session);
+
+			return message(form, `Username updated to ${form.data.username}`);
 		} catch (e) {
+			console.log(e);
 			if (e instanceof postgres.PostgresError) {
 				if (e.code === '23505') {
 					return setError(form, 'username', 'Username already taken');
@@ -125,6 +121,13 @@ export const actions: Actions = {
 					results.username.toLowerCase(),
 					form.data['new-password']
 				);
+				await auth.invalidateAllUserSessions(userId);
+				const session = await auth.createSession({
+					userId,
+					attributes: {}
+				});
+
+				locals.auth.setSession(session);
 			});
 			// TODO: How do you reset the form on success??
 			return message(form, 'Password updated');
