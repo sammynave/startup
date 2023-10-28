@@ -1,9 +1,9 @@
-import { auth } from '$lib/server/lucia.js';
 import { LuciaError } from 'lucia';
 import { fail, redirect, type Actions } from '@sveltejs/kit';
 import { setError, superValidate } from 'sveltekit-superforms/server';
 import { signInSchema } from './schema';
 import type { PageServerLoad } from './$types';
+import { signInWithPassword } from '$lib/server/lucia.js';
 
 export const load: PageServerLoad = async () => {
 	const form = await superValidate(signInSchema);
@@ -17,18 +17,10 @@ export const actions: Actions = {
 		if (!form.valid) {
 			return fail(400, { form });
 		}
-
 		try {
-			// find user by key
-			// and validate password
-			const key = await auth.useKey(
-				'username',
-				form.data.username.toLowerCase(),
-				form.data.password
-			);
-			const session = await auth.createSession({
-				userId: key.userId,
-				attributes: {}
+			const session = await signInWithPassword({
+				username: form.data.username,
+				password: form.data.password
 			});
 			locals.auth.setSession(session); // set session cookie
 		} catch (e) {

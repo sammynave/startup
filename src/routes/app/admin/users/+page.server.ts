@@ -1,8 +1,8 @@
-import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
+import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	const results = await db.query.users.findMany();
-
-	return { users: results };
+	return {
+		users: db.query.users.findMany()
+	};
 };

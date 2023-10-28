@@ -2,24 +2,26 @@ import { auth } from '$lib/server/lucia.js';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { register } from '$lib/server/workers/example-worker.js';
 import { building } from '$app/environment';
+import type { Session } from 'lucia';
 
 if (process.env.WORKER && !building) {
 	await register();
 }
 
+function isAdmin(session: Session) {
+	return session.user.roles.includes('admin');
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.auth = auth.handleRequest(event);
 	const session = await event.locals.auth.validate();
+
 	if (event.url.pathname.startsWith('/app')) {
 		if (!session) {
 			throw redirect(302, '/sign-in');
 		}
-		event.locals.user = session.user;
-	} else if (event.url.pathname.startsWith('/app/admin')) {
-		if (!session) {
-			throw redirect(302, '/sign-in');
-		}
-		if (!session.user.roles.includes('admin')) {
+
+		if (event.url.pathname.startsWith('/app/admin') && !isAdmin(session)) {
 			throw redirect(302, '/app');
 		}
 		event.locals.user = session.user;
