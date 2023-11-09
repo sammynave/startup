@@ -84,6 +84,11 @@
 			href="/app/example-background-job">Example background job</Button
 		>
 		<Button
+			class={routeId === '/app/example-pagination' ? 'underline' : ''}
+			variant="link"
+			href="/app/example-pagination">Example pagination</Button
+		>
+		<Button
 			class={routeId === '/app/settings' ? 'underline' : ''}
 			variant="link"
 			href="/app/settings">Settings</Button
