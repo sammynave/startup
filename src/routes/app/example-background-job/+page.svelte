@@ -19,6 +19,7 @@
 			Click the button below to queue up an example background job. You can queue up as many as you
 			like! If you haven't started any workers yet, you can view them in the
 			<a class="underline" href={`${PUBLIC_FAKTORY_URL}/queues/default`}>Faktory UI.</a>
+			(username can be anything; password = "some_password")
 		</P>
 
 		<P>Start a worker (`pnpm dev:worker`) to process the queue</P>

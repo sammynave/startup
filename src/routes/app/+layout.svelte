@@ -58,6 +58,15 @@
 					<Sheet.Close asChild let:builder>
 						<Button
 							builders={[builder]}
+							class={(routeId === '/app/websocket-example' ? 'underline ' : ' ') +
+								'w-full justify-start'}
+							variant="link"
+							href="/app/websocket-example">Websocket example</Button
+						>
+					</Sheet.Close>
+					<Sheet.Close asChild let:builder>
+						<Button
+							builders={[builder]}
 							class={(routeId === '/app/settings' ? 'underline ' : ' ') + 'w-full justify-start'}
 							variant="link"
 							href="/app/settings">Settings</Button
@@ -82,6 +91,11 @@
 			class={routeId === '/app/example-background-job' ? 'underline' : ''}
 			variant="link"
 			href="/app/example-background-job">Example background job</Button
+		>
+		<Button
+			class={routeId === '/app/websocket-example' ? 'underline' : ''}
+			variant="link"
+			href="/app/websocket-example">Websocket example</Button
 		>
 		<Button
 			class={routeId === '/app/settings' ? 'underline' : ''}

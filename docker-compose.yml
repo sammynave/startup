@@ -17,8 +17,20 @@ services:
     ports:
       - '7419:7419'
       - '7420:7420'
+  websocket-kv:
+    image: redis:alpine
+    command: redis-server --save 20 1 --loglevel warning --requirepass $REDIS_WS_PASSWORD
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - websocket-kv:/data
+    env_file:
+      - .env
 
 # create local volume for postgres data to persist through computer restarts
 volumes:
   postgres-data:
+    driver: local
+  websocket-kv:
     driver: local

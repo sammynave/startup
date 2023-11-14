@@ -18,7 +18,7 @@
 	{value}
 	{...$$restProps}
 	on:click
-	on:focusin
+	on:focus
 >
 	<slot />
 </TabsPrimitive.Trigger>

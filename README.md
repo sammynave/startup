@@ -1,11 +1,19 @@
 # TODO
 
+- [x] websockets integration
+- [ ] cursor based pagination
 - [ ] responsive breakpoints
 - [x] settings page (update username/password)
-- [ ] deploy scripts and config (render.com?)
+- [x] deploy scripts and config (render.com?)
 - [ ] twilio
 - [ ] sendgrid
 - [ ] payment (stripe?)
+- [ ] CLI/install script to choose which examples/config you want
+
+# TOOD someday
+- [ ] CRDT + offline first + absurdSQL
+- [ ] liveblocks/partkit style collaboration
+- [ ] https://electric-sql.com/docs/intro/local-first
 
 # Getting started
 
@@ -62,6 +70,32 @@ You can use the existing `render.yaml` to spin up a free web service and free da
 You'll also need to create an `Env Group` to store the env `PUBLIC_FAKTORY_URL` since that's used in the app. If you don't need the worker, you can delete the example route `src/routes/app/example-background-job` and skip this step
 
 See the [Render docs](https://render.com/docs/blueprint-spec) for more info
+
+# Integrated websockets server
+
+This repo contains an example (`/src/routes/app/websocket-example` -> `http://localhost:5173/app/websocket-example`) of how to setup websockets on the same port in the same process as the svelte server. (taken from this repo)[https://github.com/suhaildawood/SvelteKit-integrated-WebSocket].
+
+Key files:
+
+-  `prod-server.ts` - this is how you'll start your prod server (see `render.yaml`)
+-  `vite.config.ts` - here we create a small plugin to insert the websocket server at `/websocket` path for the dev and preview servers (`configureServer` and `configurePreviewServer`)
+-  `src/lib/server/websockets/utils.ts` - this file contains the functions that create the server (`createWSSGlobalInstance`) and host it (`onHttpServerUpgrade`) referenced in the step above. This technique relies on attaching the websocket server to the global state. This file also has two utility functions to help out when getting and setting the websocket server: `getWss` and `setWss`
+-  `src/hooks.server.ts` - this file initializes our websocket server and adds a reference to it to `locals`. this way we can trigger events from other places in our Svelte server, for example, the default action in `src/routes/app/websocket-example/+page.server.ts`. Here we're grabbing the server (`wss`) off of the `event.locals` object and then triggering a reload for all of our connected clients.
+
+Example files that make use of this setup:
+
+`src/lib/server/websockets` - this directory contains an example of how one might implement a chat room example and a "presence" example (i.e. who else is here?).
+
+- `handler.ts` - this file is responsible for setting up client connections. it handles session auth (via `Lucia`) and it set ups and coordinates the features we want to use over websockets (`Chat` and `Presence`)
+- `chat.ts` and `presence.ts` are examples of how one might group together concerns into separate files/stay organized and still be able to share a single socket per client. they make use of Redis' `pub/sub` feature so we can scale across multiple instances of this server. (NOTE: Redis' Pub/Sub exhibits **at-most-once** message delivery semantics, meaning if a message is published and there are no subscribers connected, it will never be delivered. If your app requires stronger delivery guarantees. Look into (Redis Streams)[https://redis.io/docs/data-types/streams/]. Messages in streams are persisted, and support both at-most-once as well as at-least-once delivery semantics. TODO: maybe make Streams the default implementation or look into using Postgres' pub/sub. Getting rid of the Redis infrastructure might be worth it 🤷‍♂️)
+- `redis-client.ts` - since you can't use the same Redis client for both publish and subscribe, this file just exports 3 different clients that can be reused throughout the app
+
+`src/lib/websockets` - this directory contains all of the client side examples for implementing chat and "presence".
+
+- `ws-store.ts` - this is a custom Svelte store that handles setting up the websocket and sending messages to the server
+- `chat-store.ts` - this is a custom Svelte store (with an embedded `derived` store using `ws-store`) to add a listener to `ws-store` to handle receiving chat related messages. it also exports a `send` method for sending messages to the chat channel
+- `presence-store.ts` - this is a `derived` store that adds a listener to `ws-store` for `type: 'presence'` messages.
+- `reload-store.ts` - this was useful for debugging/developing these examples - it's also a `derived` store and used for flushing the Redis cache (i.e. deleting all chat messages) and force-reloading all connected clients.
 
 # Background workers via Faktory
 
