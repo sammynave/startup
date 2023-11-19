@@ -31,8 +31,13 @@ services:
     repo: https://github.com/sammynave/startup.git
     healthCheckPath: /200
     buildCommand: pnpm build:render
-    startCommand: node build/index.js
+    startCommand: pnpm run prod
     envVars:
+      - key: REDIS_WS_SERVER
+        fromService:
+          type: redis
+          name: startup-websocket-redis
+          property: connectionString
       - key: DATABASE_URL
         fromDatabase:
           name: startup-db
@@ -47,6 +52,11 @@ services:
     buildCommand: pnpm build:render
     startCommand: node build/index.js
     envVars:
+      - key: REDIS_WS_SERVER
+        fromService:
+          type: redis
+          name: startup-websocket-redis
+          property: connectionString
       - key: WORKER
         value: true
       - key: DATABASE_URL
@@ -62,6 +72,13 @@ services:
     repo: https://github.com/contribsys/faktory-render
     envVars:
       - fromGroup: startup-env
+
+  - type: redis
+    name: startup-websocket-redis
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+    plan: free
 
 # startup-env group example
 # FAKTORY_PASSWORD=some_password
