@@ -1,7 +1,8 @@
 import type { Redis } from 'ioredis';
-import type { ExtendedWebSocketServer } from './utils';
-import { pubClient, subClient } from './redis-client';
+import type { ExtendedWebSocketServer } from '../utils.js';
+import { pubClient, subClient } from '../redis-client.js';
 import { WebSocket } from 'ws';
+import { pubSubKey } from './chat.js';
 
 export class Presence {
 	wss: ExtendedWebSocketServer;
@@ -23,7 +24,7 @@ export class Presence {
 	}) {
 		this.wss = wss;
 		this.channel = channel;
-		this.redisChannel = `presence:${channel}`;
+		this.redisChannel = pubSubKey(`presence:${channel}`);
 		this.sub = sub;
 		this.pub = pub;
 	}

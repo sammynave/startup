@@ -3,7 +3,7 @@ import { redirect, type Handle, type RequestEvent } from '@sveltejs/kit';
 import { register } from '$lib/server/workers/example-worker.js';
 import { building } from '$app/environment';
 import type { Session } from 'lucia';
-import { connectionHandler } from '$lib/server/websockets/handler';
+import { connectionHandler } from '$lib/server/websockets/pub-sub/handler';
 import { getWss, type ExtendedWebSocketServer } from '$lib/server/websockets/utils';
 
 if (process.env.WORKER && !building) {

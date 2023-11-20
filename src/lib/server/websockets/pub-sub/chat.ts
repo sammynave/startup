@@ -1,7 +1,11 @@
 import type { Redis } from 'ioredis';
-import { client, pubClient, subClient } from './redis-client';
-import type { ExtendedWebSocketServer } from './utils';
+import { client, pubClient, subClient } from '../redis-client';
+import type { ExtendedWebSocketServer } from '../utils';
 import { WebSocket } from 'ws';
+
+export function pubSubKey(channel: string) {
+	return `chat_messages:pubsub:${channel}`;
+}
 
 export class Chat {
 	wss: ExtendedWebSocketServer;
@@ -26,7 +30,7 @@ export class Chat {
 	}) {
 		this.wss = wss;
 		this.channel = channel;
-		this.redisChannel = `chat_messages:${channel}`;
+		this.redisChannel = pubSubKey(channel);
 		this.sub = sub;
 		this.pub = pub;
 		this.redisClient = redisClient;

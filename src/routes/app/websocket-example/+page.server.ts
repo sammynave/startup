@@ -1,14 +1,15 @@
-import { reloadAllClients } from '$lib/server/websockets/handler';
+import { reloadAllClients } from '$lib/server/websockets/pub-sub/handler';
 import type { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { client } from '$lib/server/websockets/redis-client';
 import type { Message } from '$lib/websockets/chat-store';
+import { pubSubKey } from '$lib/server/websockets/pub-sub/chat';
 
 const redisClient = client();
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { username } = locals.user;
-	const messages = (await redisClient.lrange(`chat_messages:chat`, 0, -1)) as unknown as string[];
+	const messages = (await redisClient.lrange(pubSubKey('chat'), 0, -1)) as unknown as string[];
 
 	return {
 		username,

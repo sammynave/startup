@@ -1,9 +1,9 @@
-import { auth } from '../lucia';
 import WebSocket from 'ws';
-import type { ExtendedWebSocket, ExtendedWebSocketServer } from './utils';
+import type { ExtendedWebSocket, ExtendedWebSocketServer } from '../utils.js';
 import type { IncomingMessage } from 'http';
-import { Presence } from './presence';
-import { Chat } from './chat';
+import { Presence } from './presence.js';
+import { Chat } from './chat.js';
+import { auth } from '$lib/server/lucia';
 
 export function reloadAllClients(wss: ExtendedWebSocketServer) {
 	return function (channel: string) {
