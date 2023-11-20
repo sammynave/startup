@@ -3,8 +3,13 @@ import { redirect, type Handle, type RequestEvent } from '@sveltejs/kit';
 import { register } from '$lib/server/workers/example-worker.js';
 import { building } from '$app/environment';
 import type { Session } from 'lucia';
-import { connectionHandler } from '$lib/server/websockets/pub-sub/handler';
-import { getWss, type ExtendedWebSocketServer } from '$lib/server/websockets/utils';
+import { connectionHandler as pubSubHandler } from '$lib/server/websockets/pub-sub/handler';
+import { connectionHandler as streamHandler } from '$lib/server/websockets/streams/handler';
+import {
+	type ExtendedWebSocketServer,
+	getPubSubWss,
+	getStreamsWss
+} from '$lib/server/websockets/utils';
 
 if (process.env.WORKER && !building) {
 	await register();
@@ -37,21 +42,39 @@ async function handleAuth({ event, session }: { event: RequestEvent; session: Se
 	}
 }
 
-let wssInitialized = false;
-function startupWebsocketServer(wss: ExtendedWebSocketServer) {
-	if (wssInitialized) {
+let psWssInitialized = false;
+function startupPubSubWebsocketServer(wss: ExtendedWebSocketServer) {
+	if (psWssInitialized) {
 		return;
 	}
 	// Handle weirdness with HMR
 	// TODO: only do this in dev?
-	if (wssInitialized === false && typeof wss !== 'undefined') {
+	if (psWssInitialized === false && typeof wss !== 'undefined') {
 		wss.removeAllListeners();
 		wss.clients.clear();
 	}
 
 	if (typeof wss !== 'undefined') {
-		wss.on('connection', connectionHandler(wss));
-		wssInitialized = true;
+		wss.on('connection', pubSubHandler(wss));
+		psWssInitialized = true;
+	}
+	return wss;
+}
+let sWssInitialized = false;
+function startupStreamsWebsocketServer(wss: ExtendedWebSocketServer) {
+	if (sWssInitialized) {
+		return;
+	}
+	// Handle weirdness with HMR
+	// TODO: only do this in dev?
+	if (sWssInitialized === false && typeof wss !== 'undefined') {
+		wss.removeAllListeners();
+		wss.clients.clear();
+	}
+
+	if (typeof wss !== 'undefined') {
+		wss.on('connection', streamHandler(wss));
+		sWssInitialized = true;
 	}
 	return wss;
 }
@@ -63,12 +86,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 	await handleAuth({ event, session });
 
 	if (!process.env.WORKER) {
-		const wss = getWss();
-		startupWebsocketServer(wss);
+		const psWss = getPubSubWss();
+		const sWss = getStreamsWss();
+		startupPubSubWebsocketServer(psWss);
+		startupStreamsWebsocketServer(sWss);
 
 		if (!building) {
-			if (wss !== undefined) {
-				event.locals.wss = wss;
+			if (psWss !== undefined) {
+				event.locals.psWss = psWss;
+			}
+			if (sWss !== undefined) {
+				event.locals.sWss = sWss;
 			}
 		}
 	}

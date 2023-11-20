@@ -58,10 +58,19 @@
 					<Sheet.Close asChild let:builder>
 						<Button
 							builders={[builder]}
-							class={(routeId === '/app/websocket-example' ? 'underline ' : ' ') +
+							class={(routeId === '/app/websocket-example/using-pub-sub' ? 'underline ' : ' ') +
 								'w-full justify-start'}
 							variant="link"
-							href="/app/websocket-example">Websocket example</Button
+							href="/app/websocket-example/using-pub-sub">Websocket example (redis pub/sub)</Button
+						>
+					</Sheet.Close>
+					<Sheet.Close asChild let:builder>
+						<Button
+							builders={[builder]}
+							class={(routeId === '/app/websocket-example/using-streams' ? 'underline ' : ' ') +
+								'w-full justify-start'}
+							variant="link"
+							href="/app/websocket-example/using-streams">Websocket example (redis streams)</Button
 						>
 					</Sheet.Close>
 					<Sheet.Close asChild let:builder>
@@ -93,9 +102,14 @@
 			href="/app/example-background-job">Example background job</Button
 		>
 		<Button
-			class={routeId === '/app/websocket-example' ? 'underline' : ''}
+			class={routeId === '/app/websocket-example/using-pub-sub' ? 'underline' : ''}
 			variant="link"
-			href="/app/websocket-example">Websocket example</Button
+			href="/app/websocket-example/using-pub-sub">Websocket example (redis pub/sub)</Button
+		>
+		<Button
+			class={routeId === '/app/websocket-example/using-streams' ? 'underline' : ''}
+			variant="link"
+			href="/app/websocket-example/using-streams">Websocket example (redis streams)</Button
 		>
 		<Button
 			class={routeId === '/app/settings' ? 'underline' : ''}

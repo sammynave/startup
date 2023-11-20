@@ -1,4 +1,8 @@
-import { createWSSGlobalInstance, onHttpServerUpgrade } from './src/lib/server/websockets/utils';
+import {
+	createPubSubWSSGlobalInstance,
+	createStreamsWSSGlobalInstance,
+	onHttpServerUpgrade
+} from './src/lib/server/websockets/utils';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
@@ -8,11 +12,13 @@ export default defineConfig({
 		{
 			name: 'integratedWebsocketServer',
 			configureServer(server) {
-				createWSSGlobalInstance();
+				createPubSubWSSGlobalInstance();
+				createStreamsWSSGlobalInstance();
 				server.httpServer?.on('upgrade', onHttpServerUpgrade);
 			},
 			configurePreviewServer(server) {
-				createWSSGlobalInstance();
+				createPubSubWSSGlobalInstance();
+				createStreamsWSSGlobalInstance();
 				server.httpServer?.on('upgrade', onHttpServerUpgrade);
 			}
 		}

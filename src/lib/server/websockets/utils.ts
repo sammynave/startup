@@ -12,17 +12,24 @@ export declare class ExtendedWebSocket extends WebSocket {
 	channel: string;
 }
 
-export const GlobalThisWSS = Symbol.for('sveltekit.wss');
+export const GlobalThisPubSubWSS = Symbol.for('sveltekit.psWss');
+export const GlobalThisStreamsWSS = Symbol.for('sveltekit.sWss');
 
 export type ExtendedWebSocketServer = Server<typeof ExtendedWebSocket>;
 
 export type ExtendedGlobal = typeof globalThis & {
-	[GlobalThisWSS]: ExtendedWebSocketServer;
+	[GlobalThisPubSubWSS]: ExtendedWebSocketServer;
+	[GlobalThisStreamsWSS]: ExtendedWebSocketServer;
 };
 
-export const getWss = () => (globalThis as ExtendedGlobal)[GlobalThisWSS];
-export const setWss = (wss: ExtendedWebSocketServer) => {
-	(globalThis as ExtendedGlobal)[GlobalThisWSS] = wss;
+export const getPubSubWss = () => (globalThis as ExtendedGlobal)[GlobalThisPubSubWSS];
+export const setPubSubWss = (wss: ExtendedWebSocketServer) => {
+	(globalThis as ExtendedGlobal)[GlobalThisPubSubWSS] = wss;
+	return wss;
+};
+export const getStreamsWss = () => (globalThis as ExtendedGlobal)[GlobalThisStreamsWSS];
+export const setStreamsWss = (wss: ExtendedWebSocketServer) => {
+	(globalThis as ExtendedGlobal)[GlobalThisStreamsWSS] = wss;
 	return wss;
 };
 
@@ -38,8 +45,16 @@ const isUrl = (url: string) => {
 export const onHttpServerUpgrade = (req: IncomingMessage, sock: Duplex, head: Buffer) => {
 	const pathname = req.url && isUrl(req.url) ? new URL(req.url).pathname : null;
 
-	if (pathname === '/websocket' || req.url?.includes('/websocket')) {
-		const wss = getWss();
+	if (pathname === '/websocket-streams' || req.url?.includes('/websocket-streams')) {
+		const wss = getStreamsWss();
+
+		wss.handleUpgrade(req, sock, head, (ws) => {
+			wss.emit('connection', ws, req);
+		});
+	}
+
+	if (pathname === '/websocket-pub-sub' || req.url?.includes('/websocket-pub-sub')) {
+		const wss = getPubSubWss();
 
 		wss.handleUpgrade(req, sock, head, (ws) => {
 			wss.emit('connection', ws, req);
@@ -47,19 +62,38 @@ export const onHttpServerUpgrade = (req: IncomingMessage, sock: Duplex, head: Bu
 	}
 };
 
-export const createWSSGlobalInstance = () => {
+export const createPubSubWSSGlobalInstance = () => {
 	if (process.env.WORKER) {
 		return;
 	}
 
-	const wss = setWss(new WebSocketServer({ noServer: true }));
+	const wss = setPubSubWss(new WebSocketServer({ noServer: true }));
 
 	wss.on('connection', (ws) => {
 		ws.socketId = nanoid();
-		console.log(`[wss:global] client connected (${ws.socketId})`);
+		console.log(`[wss:pub-sub-global] client connected (${ws.socketId})`);
 
 		ws.on('close', () => {
-			console.log(`[wss:global] client disconnected (${ws.socketId})`);
+			console.log(`[wss:pub-sub-global] client disconnected (${ws.socketId})`);
+		});
+	});
+
+	return wss;
+};
+
+export const createStreamsWSSGlobalInstance = () => {
+	if (process.env.WORKER) {
+		return;
+	}
+
+	const wss = setStreamsWss(new WebSocketServer({ noServer: true }));
+
+	wss.on('connection', (ws) => {
+		ws.socketId = nanoid();
+		console.log(`[wss:streams-global] client connected (${ws.socketId})`);
+
+		ws.on('close', () => {
+			console.log(`[wss:streams-global] client disconnected (${ws.socketId})`);
 		});
 	});
 

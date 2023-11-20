@@ -8,13 +8,13 @@
 	import { chatStore } from '$lib/websockets/chat-store.js';
 	import { presenceStore } from '$lib/websockets/presence-store.js';
 	import { reloadStore } from '$lib/websockets/reload-store.js';
-	import { wsStore } from '$lib/websockets/ws-store.js';
+	import { wsStreamsStore } from '$lib/websockets/ws-store.js';
 	import type { FormEvent } from 'formsnap/dist/internal';
 
 	export let data;
 
-	const channel = 'chat';
-	const ws = wsStore({ channel });
+	const channel = 'streams-chat';
+	const ws = wsStreamsStore({ channel });
 	const chat = chatStore(ws, data.messages);
 	const presence = presenceStore(ws, []);
 	const reload = reloadStore(ws);

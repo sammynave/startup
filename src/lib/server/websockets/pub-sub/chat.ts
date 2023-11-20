@@ -3,7 +3,7 @@ import { client, pubClient, subClient } from '../redis-client';
 import type { ExtendedWebSocketServer } from '../utils';
 import { WebSocket } from 'ws';
 
-export function pubSubKey(channel: string) {
+export function redisKey(channel: string) {
 	return `chat_messages:pubsub:${channel}`;
 }
 
@@ -30,7 +30,7 @@ export class Chat {
 	}) {
 		this.wss = wss;
 		this.channel = channel;
-		this.redisChannel = pubSubKey(channel);
+		this.redisChannel = redisKey(channel);
 		this.sub = sub;
 		this.pub = pub;
 		this.redisClient = redisClient;

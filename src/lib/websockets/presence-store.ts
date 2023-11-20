@@ -1,7 +1,7 @@
 import { derived } from 'svelte/store';
-import type { wsStore } from './ws-store';
+import type { wsPubSubStore } from './ws-store';
 
-export function presenceStore(ws: ReturnType<typeof wsStore>, initialValue: string[]) {
+export function presenceStore(ws: ReturnType<typeof wsPubSubStore>, initialValue: string[]) {
 	return derived(
 		ws,
 		($ws, set) => {
