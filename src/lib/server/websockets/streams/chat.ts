@@ -6,6 +6,9 @@ import { WebSocket } from 'ws';
 export function redisKey(channel: string) {
 	return `chat_messages:streams:${channel}`;
 }
+export function redisPresenceKey(channel: string) {
+	return `presence:streams:${channel}`;
+}
 
 export class Chat {
 	wss: ExtendedWebSocketServer;
