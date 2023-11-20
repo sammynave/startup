@@ -1,4 +1,3 @@
-// import { reloadAllClients } from '$lib/server/websockets/streams/handler.js';
 import type { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from '../$types';
 import type { Message } from '$lib/websockets/chat-store.js';
