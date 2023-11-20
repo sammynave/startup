@@ -27,6 +27,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return setError(usernameForm, '', 'Can not find user', { status: 500 });
 	}
 
+	// Pre-fill form with username
 	usernameForm.data.username = results.username;
 
 	return { usernameForm, passwordForm };
@@ -35,8 +36,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	'change-username': async ({ request, locals }) => {
 		const { userId } = locals.user;
-
 		const form = await superValidate(request, usernameSchema);
+
 		if (!form.valid) {
 			return fail(400, { form });
 		}
@@ -63,10 +64,11 @@ export const actions: Actions = {
 			return setError(form, '', `An unknown error occurred - ${e}`, { status: 500 });
 		}
 	},
+
 	'change-password': async ({ request, locals }) => {
 		const { userId } = locals.user;
-
 		const form = await superValidate(request, passwordSchema);
+
 		if (!form.valid) {
 			return fail(400, { form });
 		}

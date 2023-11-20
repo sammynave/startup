@@ -1,11 +1,14 @@
 import * as path from 'path';
 import * as url from 'url';
-import { createWSSGlobalInstance, onHttpServerUpgrade } from './src/lib/server/websockets/utils.js';
+import {
+	createWSSGlobalInstances,
+	onHttpServerUpgrade
+} from './vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.js';
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-createWSSGlobalInstance();
+createWSSGlobalInstances();
 
 const { server } = await import(path.resolve(__dirname, './build/index.js'));
 server.server.on('upgrade', onHttpServerUpgrade);

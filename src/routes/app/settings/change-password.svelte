@@ -40,16 +40,16 @@
 					>{showPassword ? 'hide' : 'show'}</Form.Button
 				>
 			</Form.Label>
-			<Form.Input type={showPassword ? 'text' : 'password'} />
+			<Form.Input autocomplete="current-password" type={showPassword ? 'text' : 'password'} />
 			<Form.Validation />
 		</Form.Field>
 		<Form.Field {config} name="new-password">
 			<Form.Label class="inline-flex w-full justify-between">Confirm password</Form.Label>
-			<Form.Input type={showPassword ? 'text' : 'password'} />
+			<Form.Input autocomplete="new-password" type={showPassword ? 'text' : 'password'} />
 			<Form.Validation />
 		</Form.Field>
 	</Form.Item>
-	<Form.Button type="submit" disabled={submitting}>Change password</Form.Button>
+	<Form.Button class="mt-2" type="submit" disabled={submitting}>Change password</Form.Button>
 	{#if message}
 		{(() => {
 			reset({ keepMessage: true });

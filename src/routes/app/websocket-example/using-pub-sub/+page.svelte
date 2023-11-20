@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/stores';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { chatStore } from '$lib/websockets/chat-store.js';
+	import { COMBINED_PATH } from '$lib/websockets/constants.js';
 	import { presenceStore } from '$lib/websockets/presence-store.js';
 	import { reloadStore } from '$lib/websockets/reload-store.js';
 	import { wsStore } from '$lib/websockets/ws-store.js';
@@ -13,8 +15,7 @@
 
 	export let data;
 
-	const channel = 'chat';
-	const ws = wsStore({ channel });
+	const ws = wsStore({ url: data.url });
 	const chat = chatStore(ws, data.messages);
 	const presence = presenceStore(ws, []);
 	const reload = reloadStore(ws);
@@ -40,11 +41,20 @@
 
 <Card.Root class="min-w-min md:w-[80%] lg:w-[60%] mx-auto border-none shadow-none">
 	<Card.Header class="flex flex-row items-center justify-between">
-		<Card.Title>SvelteKit with WebSocket Integration</Card.Title>
-		<span>{$presence.join(', ')}</span>
-		<form method="post" use:enhance>
-			<Button type="submit">Delete chat history</Button>
-		</form>
+		<div>
+			<Card.Title>Pub/Sub strategy</Card.Title>
+			<Card.Description>
+				<div class="pt-2 pb-2">
+					In this example, both the "presence" feature and the `chat` feature use Redis' pub/sub
+				</div>
+				<form method="post" use:enhance>
+					<Button type="submit">Delete chat history</Button>
+				</form>
+			</Card.Description>
+		</div>
+		<div>
+			<span>{$presence.join(', ')}</span>
+		</div>
 	</Card.Header>
 	<Separator />
 	<Card.Content class="flex flex-col-reverse overflow-y-auto max-h-[50vh] p-4">
