@@ -15,8 +15,8 @@
 
 	const channel = 'streams-chat';
 	const ws = wsStreamsStore({ channel });
-	const chat = chatStore(ws, data.messages);
 	const presence = presenceStore(ws, []);
+	const chat = chatStore(ws, data.messages);
 	const reload = reloadStore(ws);
 
 	let message = '';

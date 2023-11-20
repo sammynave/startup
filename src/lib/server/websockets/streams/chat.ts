@@ -95,21 +95,23 @@ export class Chat {
 	}
 
 	async connected(username: string) {
-		// const id = await this.redisClient.xadd(this.redisChannel, '*', 'type', 'connected');
-		// await this.redisClient.hset(`connected:${id}`, {
-		// 	type: 'connect',
-		// 	channel: this.channel,
-		// 	message: `${username} connected`
-		// });
+		const id = await this.redisClient.xadd(this.redisChannel, '*', 'type', 'message');
+		await this.redisClient.hset(`message:${id}`, {
+			id,
+			type: 'connect',
+			channel: this.channel,
+			message: `${username} joined`
+		});
 	}
 
 	async disconnected(username: string) {
-		// const message = JSON.stringify({
-		// 	type: 'disconnect',
-		// 	channel: this.channel,
-		// 	message: `${username} disconnected`
-		// });
-		// await this.pub.publish(this.redisChannel, message);
+		const id = await this.redisClient.xadd(this.redisChannel, '*', 'type', 'message');
+		await this.redisClient.hset(`message:${id}`, {
+			id,
+			type: 'disconnect',
+			channel: this.channel,
+			message: `${username} left`
+		});
 	}
 
 	async received({ username, message }: { username: string; message: string }) {
