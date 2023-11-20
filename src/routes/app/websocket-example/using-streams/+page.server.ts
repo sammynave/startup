@@ -4,6 +4,7 @@ import type { PageServerLoad } from '../$types';
 import type { Message } from '$lib/websockets/chat-store.js';
 import { redisKey } from '$lib/server/websockets/streams/chat.js';
 import { streamsClient } from '$lib/server/websockets/redis-client';
+import { reloadAllClients } from '$lib/server/websockets/streams/handler';
 
 const redisClient = streamsClient();
 
@@ -23,9 +24,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 export const actions: Actions = {
 	default: async ({ locals }) => {
-		if (locals.wss) {
-			redisClient.flushall();
-			// reloadAllClients(locals.wss)('chat');
+		redisClient.flushall();
+		if (locals.sWss) {
+			reloadAllClients(locals.sWss)('chat');
+		}
+		if (locals.psWss) {
+			reloadAllClients(locals.psWss)('chat');
 		}
 		return true;
 	}

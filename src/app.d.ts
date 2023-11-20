@@ -13,7 +13,8 @@ declare global {
 		interface Locals {
 			auth: import('lucia').AuthRequest;
 			user: Session['user'];
-			wss?: ExtendedWebSocketServer;
+			psWss?: ExtendedWebSocketServer;
+			sWss?: ExtendedWebSocketServer;
 		}
 	}
 }

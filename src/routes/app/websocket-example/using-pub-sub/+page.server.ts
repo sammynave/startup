@@ -22,9 +22,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 export const actions: Actions = {
 	default: async ({ locals }) => {
-		if (locals.wss) {
-			redisClient.flushall();
-			reloadAllClients(locals.wss)('chat');
+		redisClient.flushall();
+		if (locals.psWss) {
+			reloadAllClients(locals.psWss)('chat');
+		}
+		if (locals.sWss) {
+			reloadAllClients(locals.sWss)('chat');
 		}
 		return true;
 	}
