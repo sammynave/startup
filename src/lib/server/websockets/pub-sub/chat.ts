@@ -10,6 +10,7 @@ export function redisKey(channel: string) {
 export class Chat {
 	wss: ExtendedWebSocketServer;
 	channel: string;
+	// TODO: rename redisChannel to stream?
 	redisChannel: string;
 	redisClient: Redis;
 	sub: Redis;
