@@ -1,54 +1,73 @@
 import { streamsSubClient } from '../redis-client';
-import { redisKey, type Chat, redisPresenceKey } from './chat';
+import type { Chat } from './chat';
 import type { Presence } from './presence';
 
 class Listener {
-	chatClients: Chat[] = [];
-	presenceClients: Presence[] = [];
+	clients: (Chat | Presence)[] = [];
+	streamArgs = new Map();
+	listening = false;
 
-	addChatClient(client: Chat) {
-		this.chatClients.push(client);
+	addClient(client: Chat | Presence) {
+		this.clients.push(client);
+		this.streamArgs.set(client, [client.redisChannel, '$']);
+
+		// ensure we only have one listener
+		if (this.listening === false) {
+			this.listening = true;
+			this.listenForMessages();
+		}
 	}
-	removeChatClient(client: Chat) {
-		this.chatClients = this.chatClients.filter((c) => c !== client);
+
+	removeClient(client: Chat | Presence) {
+		this.clients = this.clients.filter((c) => c !== client);
+		this.streamArgs.delete(client);
+
+		// Stop listening if there are no clients.
+		if (this.streamArgs.values.length === 0) {
+			this.listening = false;
+		}
 	}
-	addPresenceClient(client: Presence) {
-		this.presenceClients.push(client);
+
+	getStreams() {
+		return [...this.streamArgs.values()]
+			.reduce(
+				(acc, [streamName, lastSeenId]) => {
+					if (acc[0].has(streamName)) {
+						return acc;
+					} else {
+						acc[0].add(streamName);
+						acc[1].push(lastSeenId);
+					}
+					return acc;
+				},
+				[new Set(), []]
+			)
+			.map((set) => [...set])
+			.flat();
 	}
-	removePresenceClient(client: Presence) {
-		this.presenceClients = this.presenceClients.filter((c) => c !== client);
-	}
+
 	// Is this safe? Will this blow the stack at some point?
-	async listenForMessages(lastSeenChatId: string = '$', lastSeenPresenceId: string = '$') {
-		try {
-			// TODO: write a function to get the streams when a client is added
-			// make add/remove clients generic
-			const results = await streamsSubClient().xread(
-				'BLOCK',
-				0,
-				'STREAMS',
-				redisKey('streams-chat'),
-				redisPresenceKey('streams-chat'),
-				lastSeenChatId,
-				lastSeenPresenceId
-			);
+	async listenForMessages() {
+		if (this.listening) {
+			try {
+				const streams = this.getStreams();
+				const results = await streamsSubClient().xread('BLOCK', 4000, 'STREAMS', ...streams);
 
-			if (results?.length) {
-				results.forEach(([stream, [[id]]]) => {
-					if (stream === redisPresenceKey('streams-chat')) {
-						this.presenceClients.forEach((client) => client.notify());
-						lastSeenPresenceId = id;
-					}
-
-					if (stream === redisKey('streams-chat')) {
-						this.chatClients.forEach((client) => client.notify());
-						lastSeenChatId = id;
-					}
-				});
+				if (results?.length) {
+					results.forEach(([stream, [[id]]]) => {
+						this.clients.forEach((client) => {
+							if (stream === client.redisChannel) {
+								client.notify();
+								const [streamName] = this.streamArgs.get(client);
+								this.streamArgs.set(client, [streamName, id]);
+							}
+						});
+					});
+				}
+				await this.listenForMessages();
+			} catch (err) {
+				console.error(err);
 			}
-			await this.listenForMessages(lastSeenChatId, lastSeenPresenceId);
-		} catch (err) {
-			console.error(err);
 		}
 	}
 }

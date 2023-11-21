@@ -89,7 +89,7 @@ export class Chat {
 		const message = JSON.stringify({
 			type: 'connect',
 			channel: this.channel,
-			message: `${username} connected`
+			message: `${username} joined`
 		});
 		await this.pub.publish(this.redisChannel, message);
 	}
@@ -98,7 +98,7 @@ export class Chat {
 		const message = JSON.stringify({
 			type: 'disconnect',
 			channel: this.channel,
-			message: `${username} disconnected`
+			message: `${username} left`
 		});
 		await this.pub.publish(this.redisChannel, message);
 	}

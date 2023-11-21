@@ -1,20 +1,24 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/stores';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { chatStore } from '$lib/websockets/chat-store.js';
+	import { PUB_SUB_PATH } from '$lib/websockets/constants.js';
 	import { presenceStore } from '$lib/websockets/presence-store.js';
 	import { reloadStore } from '$lib/websockets/reload-store.js';
-	import { wsPubSubStore } from '$lib/websockets/ws-store.js';
+	import { wsStore } from '$lib/websockets/ws-store.js';
 	import type { FormEvent } from 'formsnap/dist/internal';
 
 	export let data;
 
 	const channel = 'pubsub-chat';
-	const ws = wsPubSubStore({ channel });
+	const { protocol, host } = $page.url;
+	const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+	const ws = wsStore({ url: `${wsProtocol}//${host}${PUB_SUB_PATH}?channel=${channel}` });
 	const chat = chatStore(ws, data.messages);
 	const presence = presenceStore(ws, []);
 	const reload = reloadStore(ws);

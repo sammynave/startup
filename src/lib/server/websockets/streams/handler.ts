@@ -24,10 +24,10 @@ export const connectionHandler =
 		}
 
 		const chat = await Chat.init({ wss, channel, username: session.user.username });
-		await listener.addChatClient(chat);
+		await listener.addClient(chat);
 
 		const presence = await Presence.init({ wss, channel, username: session.user.username });
-		await listener.addPresenceClient(presence);
+		await listener.addClient(presence);
 
 		await presence.add(session.user.username);
 		await chat.connected(session.user.username);
@@ -37,8 +37,8 @@ export const connectionHandler =
 			await chat.received({ username: session.user.username, message: parsed.message });
 		});
 		ws.on('close', async () => {
-			await listener.removeChatClient(chat);
-			await listener.removePresenceClient(presence);
+			listener.removeClient(chat);
+			listener.removeClient(presence);
 			await chat.disconnected(session.user.username);
 			await presence.remove(session.user.username);
 		});

@@ -5,6 +5,7 @@ import type { Server, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
 import type { Session } from 'lucia';
+import { PUB_SUB_PATH, STREAMS_PATH } from '../../websockets/constants.js';
 
 export declare class ExtendedWebSocket extends WebSocket {
 	socketId: string;
@@ -45,7 +46,7 @@ const isUrl = (url: string) => {
 export const onHttpServerUpgrade = (req: IncomingMessage, sock: Duplex, head: Buffer) => {
 	const pathname = req.url && isUrl(req.url) ? new URL(req.url).pathname : null;
 
-	if (pathname === '/websocket-streams' || req.url?.includes('/websocket-streams')) {
+	if (pathname === STREAMS_PATH || req.url?.includes(STREAMS_PATH)) {
 		const wss = getStreamsWss();
 
 		wss.handleUpgrade(req, sock, head, (ws) => {
@@ -53,7 +54,7 @@ export const onHttpServerUpgrade = (req: IncomingMessage, sock: Duplex, head: Bu
 		});
 	}
 
-	if (pathname === '/websocket-pub-sub' || req.url?.includes('/websocket-pub-sub')) {
+	if (pathname === PUB_SUB_PATH || req.url?.includes(PUB_SUB_PATH)) {
 		const wss = getPubSubWss();
 
 		wss.handleUpgrade(req, sock, head, (ws) => {

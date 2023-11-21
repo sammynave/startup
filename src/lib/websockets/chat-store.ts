@@ -1,5 +1,5 @@
 import { derived } from 'svelte/store';
-import type { wsPubSubStore, wsStreamsStore } from './ws-store';
+import type { wsStore } from './ws-store';
 
 export type Message = {
 	id: string;
@@ -10,10 +10,7 @@ export type Message = {
 
 // NOTE!!! In local dev, when you save this file, HMR removes the last few messages when reloading.
 // that's because initialValue isn't updated from the server. Not a problem in prod
-export function chatStore(
-	ws: ReturnType<typeof wsPubSubStore> | ReturnType<typeof wsStreamsStore>,
-	initialValue: Message[]
-) {
+export function chatStore(ws: ReturnType<typeof wsStore>, initialValue: Message[]) {
 	const messages = derived(
 		ws,
 		($ws, set) => {

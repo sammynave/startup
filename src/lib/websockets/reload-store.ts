@@ -1,7 +1,7 @@
 import { derived } from 'svelte/store';
-import type { wsPubSubStore } from './ws-store';
+import type { wsStore } from './ws-store';
 
-export function reloadStore(ws: ReturnType<typeof wsPubSubStore>) {
+export function reloadStore(ws: ReturnType<typeof wsStore>) {
 	return derived(ws, ($ws) => {
 		let listenerAdded = false;
 		if ($ws && !listenerAdded) {
