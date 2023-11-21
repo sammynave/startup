@@ -1,9 +1,9 @@
-import { reloadAllClients } from '$lib/server/websockets/pub-sub/handler.js';
 import type { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from '../$types';
 import { client } from '$lib/server/websockets/redis-client.js';
 import type { Message } from '$lib/websockets/chat-store.js';
 import { redisKey } from '$lib/server/websockets/pub-sub/chat.js';
+import { reloadAllClients } from '$lib/server/websockets/reload-clients';
 
 const redisClient = client();
 
@@ -21,13 +21,22 @@ export const load: PageServerLoad = async ({ locals }) => {
 	};
 };
 export const actions: Actions = {
+	// TODOO
+	// TODOO
+	// TODOO
+	// TODOO
+	// TODOO
+	// TODOO
+	// TODOO
+	// TODOO
+	// THIS DOESON"T WORKER
 	default: async ({ locals }) => {
 		redisClient.flushall();
 		if (locals.psWss) {
-			reloadAllClients(locals.psWss)('chat');
+			reloadAllClients(locals.psWss)('pubsub-chat');
 		}
 		if (locals.sWss) {
-			reloadAllClients(locals.sWss)('chat');
+			reloadAllClients(locals.sWss)('streams-chat');
 		}
 		return true;
 	}

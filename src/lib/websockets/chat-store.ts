@@ -2,6 +2,7 @@ import { derived } from 'svelte/store';
 import type { wsPubSubStore, wsStreamsStore } from './ws-store';
 
 export type Message = {
+	id: string;
 	message: string;
 	type?: 'message' | 'disconnect' | 'connect';
 	username?: string;

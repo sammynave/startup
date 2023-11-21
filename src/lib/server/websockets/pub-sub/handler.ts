@@ -1,31 +1,8 @@
-import WebSocket from 'ws';
 import type { ExtendedWebSocket, ExtendedWebSocketServer } from '../utils.js';
 import type { IncomingMessage } from 'http';
 import { Presence } from './presence.js';
 import { Chat } from './chat.js';
-import { auth } from '$lib/server/lucia';
-
-export function reloadAllClients(wss: ExtendedWebSocketServer) {
-	return function (channel: string) {
-		wss.clients.forEach((client) => {
-			if (client.readyState === WebSocket.OPEN) {
-				client.send(JSON.stringify({ type: 'reload', channel }), {
-					binary: false
-				});
-			}
-		});
-	};
-}
-
-function channelFrom(request: IncomingMessage) {
-	const url = new URL(`${request.headers.origin}${request.url}`);
-	return url.searchParams.get('channel');
-}
-
-async function sessionFrom(request: IncomingMessage) {
-	const sessionId = auth.readSessionCookie(request.headers.cookie);
-	return sessionId ? await auth.validateSession(sessionId) : null; // note: `validateSession()` throws an error if session is invalid
-}
+import { channelFrom, sessionFrom } from '../request-utils.js';
 
 export const connectionHandler =
 	(wss: ExtendedWebSocketServer) => async (ws: ExtendedWebSocket, request: IncomingMessage) => {
