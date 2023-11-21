@@ -54,27 +54,28 @@ class Listener {
 			.flat();
 	}
 
-	// Is this safe? Will this blow the stack at some point?
-	async listenForMessages() {
-		if (this.listening) {
+	async *readStream() {
+		while (this.listening) {
 			try {
-				const streams = this.getStreams();
-				const results = await streamsSubClient().xread('BLOCK', 4000, 'STREAMS', ...streams);
-
-				if (results?.length) {
-					results.forEach(([stream, [[id]]]) => {
-						this.clients.forEach((client) => {
-							if (stream === client.redisChannel) {
-								client.notify();
-								const [streamName] = this.streamArgs.get(client);
-								this.streamArgs.set(client, [streamName, id]);
-							}
-						});
-					});
-				}
-				await this.listenForMessages();
+				yield await streamsSubClient().xread('BLOCK', 4000, 'STREAMS', ...this.getStreams());
 			} catch (err) {
 				console.error(err);
+			}
+		}
+	}
+
+	async listenForMessages() {
+		for await (const results of this.readStream()) {
+			if (results?.length) {
+				results.forEach(([stream, [[id]]]) => {
+					this.clients.forEach((client) => {
+						if (stream === client.redisChannel) {
+							client.notify();
+							const [streamName] = this.streamArgs.get(client);
+							this.streamArgs.set(client, [streamName, id]);
+						}
+					});
+				});
 			}
 		}
 	}
