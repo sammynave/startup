@@ -84,10 +84,12 @@ Key files:
 
 Example files that make use of this setup:
 
-`src/lib/server/websockets` - this directory contains an example of how one might implement a chat room example and a "presence" example (i.e. who else is here?).
+`src/lib/server/websockets` - this directory contains examples of how one might implement a chat room example and a "presence" example (i.e. who else is here?).
 
 - `handler.ts` - this file is responsible for setting up client connections. it handles session auth (via `Lucia`) and it set ups and coordinates the features we want to use over websockets (`Chat` and `Presence`)
-- `chat.ts` and `presence.ts` are examples of how one might group together concerns into separate files/stay organized and still be able to share a single socket per client. they make use of Redis' `pub/sub` feature so we can scale across multiple instances of this server. (NOTE: Redis' Pub/Sub exhibits **at-most-once** message delivery semantics, meaning if a message is published and there are no subscribers connected, it will never be delivered. If your app requires stronger delivery guarantees. Look into (Redis Streams)[https://redis.io/docs/data-types/streams/]. Messages in streams are persisted, and support both at-most-once as well as at-least-once delivery semantics. TODO: maybe make Streams the default implementation or look into using Postgres' pub/sub. Getting rid of the Redis infrastructure might be worth it 🤷‍♂️)
+- `chat.ts` and `presence.ts` are examples of how one might group together concerns into separate files/stay organized and still be able to share a single socket per client.
+- The pub/sub version makes use of Redis' `pub/sub` feature so we can scale across multiple instances of this server. NOTE: Redis' Pub/Sub exhibits **at-most-once** message delivery semantics, meaning if a message is published and there are no subscribers connected, it will never be delivered.
+- If your app requires stronger delivery guarantees look at the Redis Streams example. Messages in streams are persisted, and support both **at-most-once** as well as **at-least-once** delivery semantics.
 - `redis-client.ts` - since you can't use the same Redis client for both publish and subscribe, this file just exports 3 different clients that can be reused throughout the app
 
 `src/lib/websockets` - this directory contains all of the client side examples for implementing chat and "presence".
