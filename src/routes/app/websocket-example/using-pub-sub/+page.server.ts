@@ -21,15 +21,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	};
 };
 export const actions: Actions = {
-	// TODOO
-	// TODOO
-	// TODOO
-	// TODOO
-	// TODOO
-	// TODOO
-	// TODOO
-	// TODOO
-	// THIS DOESON"T WORKER
 	default: async ({ locals }) => {
 		redisClient.flushall();
 		if (locals.psWss) {
