@@ -1,5 +1,5 @@
 import type { Actions } from '@sveltejs/kit';
-import type { PageServerLoad } from '../$types';
+import type { PageServerLoad } from './$types';
 import { client } from '$lib/server/websockets/redis-client.js';
 import type { Message } from '$lib/websockets/chat-store.js';
 import { redisKey } from '$lib/server/websockets/pub-sub/chat.js';

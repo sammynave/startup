@@ -5,11 +5,9 @@ import { building } from '$app/environment';
 import type { Session } from 'lucia';
 import { connectionHandler as pubSubHandler } from '$lib/server/websockets/pub-sub/handler';
 import { connectionHandler as streamHandler } from '$lib/server/websockets/streams/handler';
-import {
-	type ExtendedWebSocketServer,
-	getPubSubWss,
-	getStreamsWss
-} from '$lib/server/websockets/utils';
+import type { ExtendedWebSocketServer } from '$lib/server/websockets/utils';
+import { servers } from '$lib/server/websockets/utils';
+import { PUB_SUB_PATH, STREAMS_PATH } from '$lib/websockets/constants';
 
 if (process.env.WORKER && !building) {
 	await register();
@@ -86,8 +84,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	await handleAuth({ event, session });
 
 	if (!process.env.WORKER) {
-		const psWss = getPubSubWss();
-		const sWss = getStreamsWss();
+		const psWss = servers[PUB_SUB_PATH].getWss();
+		const sWss = servers[STREAMS_PATH].getWss();
+
 		startupPubSubWebsocketServer(psWss);
 		startupStreamsWebsocketServer(sWss);
 
