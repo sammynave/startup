@@ -46,6 +46,12 @@
       - one subscriber (NOTE: once a client becomes a subscriber, it can no longer send other types of commands)
       - one for blocking operations like `xread` in the `streams` strategy
 
+# TODO
+
+- start refactoring/redesigning some of this to match the notes above. 
+- map out what is public and what is private.
+- start thinking about this as a npm package that can be installed.
+
 # Client
 
 stream naming convention: `object-type:id:field` (e.x. `channel:123:presence` or `channel:123:chat` or `channel:123:thread:345:chat`)
