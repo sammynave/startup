@@ -7,7 +7,12 @@ import { reloadAllClients } from '$lib/server/websockets/reload-clients';
 
 const redisClient = client();
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, params, url }) => {
+	// const params = new URLSearchParams([Object.entries({name:"Phil Collins",age:72}),Object.entries({name: 'butt', age: 69})].flat());
+	// console.log(params.toString());
+	// params.getAll
+
+	console.log(url.searchParams.getAll('clients').map((y) => JSON.parse(y)));
 	const { username } = locals.user;
 	const messages = (await redisClient.lrange(
 		redisKey('pubsub-chat'),
