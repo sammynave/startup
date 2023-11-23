@@ -19,7 +19,7 @@
     - initializes specified `clients` (NOTE: maybe call these `plugins`?). (e.g. `chat`, `presence`, `notifications`, etc...)
     - NOTE: it would be nice to support custom `clients` here.
       - need to settle on a contract
-      - maybe an object/class with specific methods (e.g. `init`, `connected`, `received`, `disconnected`, etc...)
+      - maybe an object/class with specific methods (e.g. `init`, `open`, `message`, `close`, etc...)
     - passes context to each `client`
       - `wss`
       - `ws`
@@ -28,15 +28,23 @@
         - `stream`
         - `strategy`
   - Clients (e.g. `chat-client.ts`)
-    - responsible for hooking into ws events (e.g. `connected`, `disconnected`)
+    - responsible for hooking into ws events (e.g. `message`, `open`, `close`) NOTE: "hooking into `open` isn't `ws.on('open')` since we're in the `open` event when initializing the client.
     - hooking into global Redis listener (for `streams` strategy)
-
-
-
-
-
-
-
+    - examples for chat with pub/sub strategy
+      - `pub`
+        - `open` => publish a `user X joined` message
+        - `close` => publish a `user x left` message
+        - `message` => create message, push to channel, publish message recieved event
+      - `sub`
+        - on `message` published, notifify all the clients subscribed to this channel on this `wss`
+  - Listener (`streams` strategy only)
+    - basically manages all of the code needed to support `xread` blocking and reading from multiple streams
+    - adding/removing consumers (a.k.a clients like `chat` or `presence`)
+  - Redis clients
+    - probably need 3 clients:
+      - one publisher/generic uses (`xadd`, `lpush`, `xrange`, `hset`, `hgetall`, etc...)
+      - one subscriber (NOTE: once a client becomes a subscriber, it can no longer send other types of commands)
+      - one for blocking operations like `xread` in the `streams` strategy
 
 # Client
 
