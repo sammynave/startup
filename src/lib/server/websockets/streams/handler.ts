@@ -1,4 +1,4 @@
-import type { ExtendedWebSocket, ExtendedWebSocketServer } from '../utils.js';
+import type { ExtendedWebSocket, ExtendedWebSocketServer } from '../setup.js';
 import type { IncomingMessage } from 'http';
 import { Presence } from './presence';
 import { Chat } from './chat.js';

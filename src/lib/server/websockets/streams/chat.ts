@@ -1,6 +1,6 @@
 import type { Redis } from 'ioredis';
 import { streamsClient, streamsSubClient } from '../redis-client';
-import type { ExtendedWebSocket, ExtendedWebSocketServer } from '../utils.js';
+import type { ExtendedWebSocket, ExtendedWebSocketServer } from '../setup.js';
 import { WebSocket } from 'ws';
 
 export function redisKey(channel: string) {

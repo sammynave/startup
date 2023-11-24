@@ -1,5 +1,5 @@
 import type { Redis } from 'ioredis';
-import type { ExtendedWebSocketServer } from '../utils.js';
+import type { ExtendedWebSocketServer } from '../setup.js';
 import { pubClient, subClient } from '../redis-client.js';
 import { WebSocket } from 'ws';
 import { redisKey } from './chat.js';

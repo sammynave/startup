@@ -1,4 +1,4 @@
-import type { ExtendedWebSocketServer } from './utils';
+import type { ExtendedWebSocketServer } from './setup';
 import { WebSocket } from 'ws';
 
 export function reloadAllClients(wss: ExtendedWebSocketServer) {

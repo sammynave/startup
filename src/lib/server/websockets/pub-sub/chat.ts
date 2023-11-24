@@ -1,6 +1,6 @@
 import type { Redis } from 'ioredis';
 import { client, pubClient, subClient } from '../redis-client';
-import type { ExtendedWebSocketServer } from '../utils';
+import type { ExtendedWebSocketServer } from '../setup';
 import { WebSocket } from 'ws';
 
 export function redisKey(channel: string) {

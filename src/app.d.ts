@@ -1,7 +1,7 @@
 // See https://kit.svelte.dev/docs/types#app
 
 import type { userRoles } from '$lib/server/db/schema';
-import type { ExtendedWebSocketServer } from '$lib/server/websockets/utils';
+import type { ExtendedWebSocketServer } from '$lib/server/websockets/setup';
 import type { Session } from 'lucia';
 
 // for information about these interfaces
@@ -13,8 +13,7 @@ declare global {
 		interface Locals {
 			auth: import('lucia').AuthRequest;
 			user: Session['user'];
-			psWss?: ExtendedWebSocketServer;
-			sWss?: ExtendedWebSocketServer;
+			wss?: ExtendedWebSocketServer;
 		}
 	}
 }
