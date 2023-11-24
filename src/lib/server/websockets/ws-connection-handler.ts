@@ -5,10 +5,12 @@ import type {
 import type { IncomingMessage } from 'http';
 import { streamFrom } from './request-utils';
 import type { Session } from 'lucia';
+import { Presence } from './handlers/presence';
+import { Chat } from './handlers/chat';
 
-const Handlers = {
-	chat: ChatHandler,
-	presence: PresenceHandler
+const handlers = {
+	chat: Chat,
+	presence: Presence
 };
 
 export const wsConnectionHandler =
@@ -32,6 +34,6 @@ export const wsConnectionHandler =
 				return;
 			}
 
-			Handlers[name].init({ stream, strategy, ws, wss });
+			handlers[name].init({ stream, strategy, ws, wss });
 		});
 	};
