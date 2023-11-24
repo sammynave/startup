@@ -1,30 +1,9 @@
-import type { WebSocketServer } from 'ws';
 import type {
 	ExtendedWebSocket,
 	ExtendedWebSocketServer
 } from '../../../../../vite-plugins/vite-plugin-svelte-socket-server';
-
-class RedisStreams {
-	constructor({ wss, stream }: { wss: ExtendedWebSocketServer; stream: string }) {
-		this.wss = wss;
-		this.stream = stream;
-	}
-	receiveMessage() {}
-	connected() {}
-	disconnected() {}
-	broadcast() {}
-}
-
-class RedisPubSub {
-	constructor({ wss, stream }: { wss: ExtendedWebSocketServer; stream: string }) {
-		this.wss = wss;
-		this.stream = stream;
-	}
-	receiveMessage() {}
-	connected() {}
-	disconnected() {}
-	broadcast() {}
-}
+import { RedisPubSub } from './strategies/chat/redis-pub-sub';
+import { RedisStreams } from './strategies/chat/redis-streams';
 
 const strategies = {
 	'pub-sub': RedisPubSub,
@@ -43,8 +22,8 @@ export class Chat {
 		ws: ExtendedWebSocket;
 		wss: ExtendedWebSocketServer;
 	}) {
-		const strat = new strategies[strategy]({ wss, stream });
-		const chat = new Chat({ strategy: strat });
+		const s = await strategies[strategy].init({ wss, stream });
+		return new Chat({ strategy: s });
 	}
 
 	strategy: RedisPubSub | RedisStreams;
@@ -52,14 +31,13 @@ export class Chat {
 	constructor({ strategy }: { strategy: RedisPubSub | RedisStreams }) {
 		this.strategy = strategy;
 	}
-
-	async connected(userId: string) {
-		await this.strategy.connected({ userId: string });
+	async connected(username: string) {
+		await this.strategy.connected(username);
 	}
-	async receiveMessage({ userId, message }: { userId: string; message: string }) {
-		await this.strategy.receiveMessage({ userId, message });
+	async receiveMessage({ username, message }: { username: string; message: string }) {
+		await this.strategy.receiveMessage({ username, message });
 	}
-	async disconnected(userId: string) {
-		await this.strategy.disconnected({ userId: string });
+	async disconnected(username: string) {
+		await this.strategy.disconnected(username);
 	}
 }
