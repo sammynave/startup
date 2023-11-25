@@ -39,7 +39,7 @@ class Listener {
 	listening = false;
 
 	addClient(client: RedisStreamsChat) {
-		console.log('add', client);
+		console.log('adding');
 		this.clients.push(client);
 		this.streamArgs.set(client, [client.stream, '$']);
 

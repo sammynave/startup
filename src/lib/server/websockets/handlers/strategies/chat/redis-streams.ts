@@ -8,28 +8,34 @@ import type {
 export class RedisStreams {
 	static async init({
 		wss,
+		ws,
 		stream,
 		username
 	}: {
 		wss: ExtendedWebSocketServer;
+		ws: ExtendedWebSocket;
 		stream: string;
 		username: string;
 	}) {
-		return new RedisStreams({ wss, stream, username });
+		return new RedisStreams({ wss, stream, username, ws });
 	}
 
 	stream: string;
 	username: string;
 	wss: ExtendedWebSocketServer;
+	ws: ExtendedWebSocket;
 	constructor({
 		wss,
+		ws,
 		stream,
 		username
 	}: {
+		ws: ExtendedWebSocket;
 		wss: ExtendedWebSocketServer;
 		stream: string;
 		username: string;
 	}) {
+		this.ws = ws;
 		this.wss = wss;
 		this.stream = stream;
 		this.username = username;
@@ -48,7 +54,7 @@ export class RedisStreams {
 	}
 
 	async connected() {
-		console.log('adding listner', this);
+		console.log('adding listner');
 		await listener.addClient(this);
 		const id = await pubClient().xadd(this.stream, '*', 'type', 'message');
 		await pubClient().hset(`message:${id}`, {
@@ -90,10 +96,13 @@ export class RedisStreams {
 	private client() {
 		let myClient: ExtendedWebSocket | null = null;
 		this.wss.clients.forEach((client) => {
+			console.log('TODO');
+			console.log("`client` seems to be wrong/doesn't have a session");
+			console.log({ internal: this.ws.socketId, extern: client.socketId });
 			if (
 				client.readyState === WebSocket.OPEN &&
 				client.stream === this.stream &&
-				this.username === client.session.user.username
+				this.ws.socketId === client.socketId
 			) {
 				myClient = client;
 			}

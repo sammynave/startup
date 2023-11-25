@@ -46,7 +46,6 @@ export const wsConnectionHandler =
 			})
 		);
 
-		console.log('iii', initializedClients);
 		initializedClients.forEach(async (client) => {
 			const c = await client;
 			await c.connected();
@@ -55,7 +54,6 @@ export const wsConnectionHandler =
 		ws.on('message', async (data: string) => {
 			const parsed = JSON.parse(data);
 			initializedClients.forEach(async (client) => {
-				console.log({ client });
 				await client.receiveMessage({ username: session.user.username, message: parsed });
 			});
 		});
