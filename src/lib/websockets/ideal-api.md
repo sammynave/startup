@@ -88,7 +88,7 @@ const ws = wsStore({ stream: 'channel:123', clients: [chat, presence, notificati
 export function wsStore({ clients }) {
 	const { protocol, host } = $page.url;
 	const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${wsProtocol}//${host}/ws?clients=${clients.map(({name, strategy, stream}) => ({ name, strategy, stream }))}`
+  const url = `${wsProtocol}//${host}/ws?clients=${clients.map(({type, strategy, stream}) => ({ type, strategy, stream }))}`
 
   // ...
 

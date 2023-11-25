@@ -15,14 +15,16 @@ export class Chat {
 		stream,
 		strategy,
 		ws,
-		wss
+		wss,
+		username
 	}: {
 		stream: string;
 		strategy: 'pub-sub' | 'streams';
 		ws: ExtendedWebSocket;
 		wss: ExtendedWebSocketServer;
+		username: string;
 	}) {
-		const s = await strategies[strategy].init({ wss, stream });
+		const s = await strategies[strategy].init({ wss, stream, username });
 		return new Chat({ strategy: s });
 	}
 
@@ -32,12 +34,15 @@ export class Chat {
 		this.strategy = strategy;
 	}
 	async connected(username: string) {
+		console.log('cccccccc');
 		await this.strategy.connected(username);
 	}
 	async receiveMessage({ username, message }: { username: string; message: string }) {
+		console.log('r');
 		await this.strategy.receiveMessage({ username, message });
 	}
 	async disconnected(username: string) {
+		console.log('d');
 		await this.strategy.disconnected(username);
 	}
 }

@@ -13,6 +13,8 @@ const handlers = {
 	presence: Presence
 };
 
+const handlerFor = (type: keyof typeof handlers) => handlers[type];
+
 export const wsConnectionHandler =
 	(wss: ExtendedWebSocketServer, session: Session) =>
 	async (ws: ExtendedWebSocket, request: IncomingMessage) => {
@@ -24,16 +26,43 @@ export const wsConnectionHandler =
 			return;
 		}
 
-		clients.forEach(({ name, stream, strategy = 'pub-sub' }) => {
-			if (!strategy) {
-				console.warn(`No strategy specified for client ${name}. Defaulting to pub-sub`);
-			}
+		const initializedClients: Array<Chat | Presence> = await Promise.all(
+			clients.map(async ({ type, stream, strategy = 'pub-sub' }) => {
+				if (!strategy) {
+					console.warn(`No strategy specified for client ${type}. Defaulting to pub-sub`);
+				}
 
-			if (!stream) {
-				console.error(`Can not initialize client ${name}, no stream specified.`);
-				return;
-			}
+				if (!stream) {
+					console.error(`Can not initialize client ${type}, no stream specified.`);
+					return;
+				}
+				return await handlerFor(type).init({
+					stream,
+					strategy,
+					ws,
+					wss,
+					username: session.user.username
+				});
+			})
+		);
 
-			handlers[name].init({ stream, strategy, ws, wss });
+		console.log('iii', initializedClients);
+		initializedClients.forEach(async (client) => {
+			const c = await client;
+			await c.connected();
+		});
+
+		ws.on('message', async (data: string) => {
+			const parsed = JSON.parse(data);
+			initializedClients.forEach(async (client) => {
+				console.log({ client });
+				await client.receiveMessage({ username: session.user.username, message: parsed });
+			});
+		});
+
+		ws.on('close', async () => {
+			initializedClients.forEach(async (client) => {
+				await client.disconnected();
+			});
 		});
 	};

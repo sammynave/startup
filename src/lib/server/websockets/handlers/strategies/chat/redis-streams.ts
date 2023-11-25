@@ -1,4 +1,5 @@
 import { listener, pubClient } from '$lib/server/websockets/redis-client';
+import { WebSocket } from 'ws';
 import type {
 	ExtendedWebSocket,
 	ExtendedWebSocketServer
@@ -45,7 +46,9 @@ export class RedisStreams {
 			message
 		});
 	}
+
 	async connected() {
+		console.log('adding listner', this);
 		await listener.addClient(this);
 		const id = await pubClient().xadd(this.stream, '*', 'type', 'message');
 		await pubClient().hset(`message:${id}`, {

@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { REDIS_WS_SERVER } from '$env/static/private';
+import type { RedisStreams as RedisStreamsChat } from './handlers/strategies/chat/redis-streams';
 
 let pub: Redis | null = null;
 let sub: Redis | null = null;
@@ -26,17 +27,19 @@ export const streamsClient = () => {
 	streams = streams ? streams : new Redis(REDIS_WS_SERVER);
 	return streams;
 };
+
 export const streamsSubClient = () => {
 	streamsSub = streamsSub ? streamsSub : new Redis(REDIS_WS_SERVER);
 	return streamsSub;
 };
 
 class Listener {
-	clients: (Chat | Presence)[] = [];
+	clients: RedisStreamsChat[] = [];
 	streamArgs = new Map();
 	listening = false;
 
-	addClient(client: Chat | Presence) {
+	addClient(client: RedisStreamsChat) {
+		console.log('add', client);
 		this.clients.push(client);
 		this.streamArgs.set(client, [client.stream, '$']);
 
@@ -47,7 +50,7 @@ class Listener {
 		}
 	}
 
-	removeClient(client: Chat | Presence) {
+	removeClient(client: RedisStreamsChat) {
 		this.clients = this.clients.filter((c) => c !== client);
 		this.streamArgs.delete(client);
 
@@ -98,8 +101,8 @@ class Listener {
 			if (results?.length) {
 				results.forEach(([stream, [[id]]]) => {
 					this.clients.forEach((client) => {
-						if (stream === client.redisChannel) {
-							client.notify();
+						if (stream === client.stream) {
+							client.broadcast();
 							const [streamName] = this.streamArgs.get(client);
 							this.streamArgs.set(client, [streamName, id]);
 						}

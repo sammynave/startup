@@ -1,7 +1,7 @@
 import { browser } from '$app/environment';
 
 type Subscription = (value: WebSocket | null) => void;
-export function wsStore({ url }: { url: string }) {
+export function newWsStore({ url }: { url: string }) {
 	const subscriptions = new Set<Subscription>();
 
 	let ws: WebSocket | null = null;
@@ -42,7 +42,6 @@ export function wsStore({ url }: { url: string }) {
 			if (!ws) {
 				throw 'No websocket connection!';
 			}
-			console.log({ ws });
 			ws.send(message);
 		}
 	};

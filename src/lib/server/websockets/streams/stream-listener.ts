@@ -83,6 +83,6 @@ class Listener {
 
 // This needs to be a singleton to prevent duplicates
 const listener = new Listener();
-listener.listenForMessages();
+// listener.listenForMessages();
 
 export { listener };
