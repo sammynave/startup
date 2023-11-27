@@ -1,22 +1,31 @@
-import type { Session } from 'lucia';
-import { getWss } from '../../../../vite-plugins/vite-plugin-svelte-socket-server';
+import {
+	GlobalThisWSS,
+	type ExtendedGlobal
+} from '../../../../vite-plugins/vite-plugin-svelte-socket-server';
 import { wsConnectionHandler } from './ws-connection-handler';
+import { dev } from '$app/environment';
+import type { Session } from 'lucia';
 
 let wssInitialized = false;
+
 export function wssHandler(session: Session) {
+	const wss = (globalThis as ExtendedGlobal)[GlobalThisWSS];
 	if (wssInitialized) {
-		return;
-	}
-	const wss = getWss();
-	// Handle weirdness with HMR
-	// TODO: only do this in dev?
-	if (wssInitialized === false && typeof wss !== 'undefined') {
-		wss.removeAllListeners();
-		wss.clients.clear();
+		return wss;
 	}
 
 	if (typeof wss !== 'undefined') {
-		wss.on('connection', wsConnectionHandler(wss, session));
+		// Handle zombie listeners with HMR in dev
+		if (dev) {
+			wss.listeners('connection').forEach((listener) => {
+				if (listener.name === 'onConnection') {
+					wss.removeListener('connection', listener);
+				}
+			});
+		}
+		wss.on('connection', async function onConnection(ws, req) {
+			return await wsConnectionHandler(session, ws, req);
+		});
 		wssInitialized = true;
 	}
 	return wss;

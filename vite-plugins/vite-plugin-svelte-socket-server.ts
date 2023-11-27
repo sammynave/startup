@@ -6,19 +6,16 @@ import { nanoid } from 'nanoid';
 
 export declare class ExtendedWebSocket extends WebSocket {
 	socketId: string;
-	session: Session;
-	stream: string;
+	// session: Session; stream: string;
 }
 
 export type ExtendedWebSocketServer = Server<typeof ExtendedWebSocket>;
 
-const GlobalThisWSS = Symbol.for('sveltekit.wss');
+export const GlobalThisWSS = Symbol.for('sveltekit.wss');
 
 export type ExtendedGlobal = typeof globalThis & {
 	[GlobalThisWSS]: ExtendedWebSocketServer;
 };
-
-export const getWss = () => (globalThis as ExtendedGlobal)[GlobalThisWSS];
 
 const isUrl = (url: string) => {
 	try {
@@ -36,7 +33,7 @@ const pathname = (req: IncomingMessage) => {
 const upgrade =
 	({ endpoint }: { endpoint: string }) =>
 	(req: IncomingMessage, sock: Duplex, head: Buffer) => {
-		const wss = getWss();
+		const wss = (globalThis as ExtendedGlobal)[GlobalThisWSS];
 		if (!wss) {
 			throw 'WSS not started';
 		}
@@ -53,11 +50,10 @@ const create = () => {
 		return;
 	}
 
-	(globalThis as ExtendedGlobal)[GlobalThisWSS] = new WebSocketServer({ noServer: true });
-	const wss = (globalThis as ExtendedGlobal)[GlobalThisWSS];
-	console.log({ wss });
+	const wss = new WebSocketServer({ noServer: true }) as ExtendedWebSocketServer;
+	(globalThis as ExtendedGlobal)[GlobalThisWSS] = wss;
 
-	wss.on('connection', (ws) => {
+	wss.on('connection', function pluginConnection(ws) {
 		ws.socketId = nanoid();
 		console.log(`[wss:global] client connected (${ws.socketId})`);
 

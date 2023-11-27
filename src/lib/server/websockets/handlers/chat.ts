@@ -1,7 +1,4 @@
-import type {
-	ExtendedWebSocket,
-	ExtendedWebSocketServer
-} from '../../../../../vite-plugins/vite-plugin-svelte-socket-server';
+import type { ExtendedWebSocket } from '../../../../../vite-plugins/vite-plugin-svelte-socket-server';
 import { RedisPubSub } from './strategies/chat/redis-pub-sub';
 import { RedisStreams } from './strategies/chat/redis-streams';
 
@@ -15,16 +12,14 @@ export class Chat {
 		stream,
 		strategy,
 		ws,
-		wss,
 		username
 	}: {
 		stream: string;
 		strategy: 'pub-sub' | 'streams';
 		ws: ExtendedWebSocket;
-		wss: ExtendedWebSocketServer;
 		username: string;
 	}) {
-		const s = await strategies[strategy].init({ wss, stream, username, ws });
+		const s = await strategies[strategy].init({ stream, username, ws });
 		return new Chat({ strategy: s });
 	}
 
@@ -32,6 +27,9 @@ export class Chat {
 
 	constructor({ strategy }: { strategy: RedisPubSub | RedisStreams }) {
 		this.strategy = strategy;
+	}
+	get stream() {
+		return this.strategy.stream;
 	}
 	async connected(username: string) {
 		await this.strategy.connected(username);

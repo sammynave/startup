@@ -1,42 +1,37 @@
 import { listener, pubClient } from '$lib/server/websockets/redis-client';
 import { WebSocket } from 'ws';
-import type {
-	ExtendedWebSocket,
-	ExtendedWebSocketServer
+import {
+	GlobalThisWSS,
+	type ExtendedWebSocket,
+	type ExtendedGlobal
 } from '../../../../../../../vite-plugins/vite-plugin-svelte-socket-server';
 
 export class RedisStreams {
 	static async init({
-		wss,
 		ws,
 		stream,
 		username
 	}: {
-		wss: ExtendedWebSocketServer;
 		ws: ExtendedWebSocket;
 		stream: string;
 		username: string;
 	}) {
-		return new RedisStreams({ wss, stream, username, ws });
+		return new RedisStreams({ stream, username, ws });
 	}
 
 	stream: string;
 	username: string;
-	wss: ExtendedWebSocketServer;
 	ws: ExtendedWebSocket;
 	constructor({
-		wss,
 		ws,
 		stream,
 		username
 	}: {
 		ws: ExtendedWebSocket;
-		wss: ExtendedWebSocketServer;
 		stream: string;
 		username: string;
 	}) {
 		this.ws = ws;
-		this.wss = wss;
 		this.stream = stream;
 		this.username = username;
 	}
@@ -54,7 +49,6 @@ export class RedisStreams {
 	}
 
 	async connected() {
-		console.log('adding listner');
 		await listener.addClient(this);
 		const id = await pubClient().xadd(this.stream, '*', 'type', 'message');
 		await pubClient().hset(`message:${id}`, {
@@ -72,7 +66,12 @@ export class RedisStreams {
 			stream: this.stream,
 			message: `${this.username} left`
 		});
+		console.log('REMOVING CLIENT IN redist-streams.ts');
+		console.log(listener.id);
+		console.log('before', listener.clients.size);
 		await listener.removeClient(this);
+		console.log('after', listener.clients.size);
+		console.log('END REMOVING CLIENT IN redist-streams.ts');
 	}
 
 	async broadcast() {
@@ -95,15 +94,10 @@ export class RedisStreams {
 
 	private client() {
 		let myClient: ExtendedWebSocket | null = null;
-		this.wss.clients.forEach((client) => {
-			console.log('TODO');
-			console.log("`client` seems to be wrong/doesn't have a session");
-			console.log({ internal: this.ws.socketId, extern: client.socketId });
-			if (
-				client.readyState === WebSocket.OPEN &&
-				client.stream === this.stream &&
-				this.ws.socketId === client.socketId
-			) {
+
+		const wss = (globalThis as ExtendedGlobal)[GlobalThisWSS];
+		wss.clients.forEach((client) => {
+			if (client.readyState === WebSocket.OPEN && this.ws.socketId === client.socketId) {
 				myClient = client;
 			}
 		});

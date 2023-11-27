@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 import { REDIS_WS_SERVER } from '$env/static/private';
 import type { RedisStreams as RedisStreamsChat } from './handlers/strategies/chat/redis-streams';
+import { nanoid } from 'nanoid';
 
 let pub: Redis | null = null;
 let sub: Redis | null = null;
@@ -34,13 +35,13 @@ export const streamsSubClient = () => {
 };
 
 class Listener {
-	clients: RedisStreamsChat[] = [];
+	clients: Set<RedisStreamsChat> = new Set();
 	streamArgs = new Map();
 	listening = false;
+	id = nanoid();
 
 	addClient(client: RedisStreamsChat) {
-		console.log('adding');
-		this.clients.push(client);
+		this.clients.add(client);
 		this.streamArgs.set(client, [client.stream, '$']);
 
 		// ensure we only have one listener
@@ -51,11 +52,12 @@ class Listener {
 	}
 
 	removeClient(client: RedisStreamsChat) {
-		this.clients = this.clients.filter((c) => c !== client);
+		this.clients.delete(client);
 		this.streamArgs.delete(client);
 
 		// Stop listening if there are no clients.
-		if (this.clients.length === 0) {
+		if (this.clients.size === 0) {
+			console.log('stop listening');
 			this.listening = false;
 		}
 	}
@@ -88,8 +90,10 @@ class Listener {
 
 	async *readStream() {
 		while (this.listening) {
+			console.log(this.listening);
 			try {
-				yield await streamsSubClient().xread('BLOCK', 4000, 'STREAMS', ...this.getStreams());
+				// console.log({ streams: this.getStreams() });
+				yield await streamsSubClient().xread('BLOCK', 3000, 'STREAMS', ...this.getStreams());
 			} catch (err) {
 				console.error(err);
 			}
@@ -113,8 +117,11 @@ class Listener {
 	}
 }
 
+// ZOMBIE LISTNERS!!!!
+// THERE ARE MULTIPLE HERE
 // This needs to be a singleton to prevent duplicates
 const listener = new Listener();
 listener.listenForMessages();
+console.log(listener.id);
 
 export { listener };

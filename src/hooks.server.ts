@@ -3,12 +3,8 @@ import { redirect, type Handle, type RequestEvent } from '@sveltejs/kit';
 import { register } from '$lib/server/workers/example-worker.js';
 import { building } from '$app/environment';
 import type { Session } from 'lucia';
-import { connectionHandler as pubSubHandler } from '$lib/server/websockets/pub-sub/handler';
-import { connectionHandler as streamHandler } from '$lib/server/websockets/streams/handler';
-import {
-	getWss,
-	type ExtendedWebSocketServer
-} from '../vite-plugins/vite-plugin-svelte-socket-server';
+// import { connectionHandler as pubSubHandler } from '$lib/server/websockets/pub-sub/handler';
+// import { connectionHandler as streamHandler } from '$lib/server/websockets/streams/handler';
 import { wssHandler } from '$lib/server/websockets/wss-handler';
 
 if (process.env.WORKER && !building) {

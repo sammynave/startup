@@ -30,5 +30,5 @@ declare global {
 		};
 	}
 }
-
+/// <reference types="vite/client" />
 export {};
