@@ -1,5 +1,5 @@
-import type { ExtendedWebSocketServer } from './utils';
 import { WebSocket } from 'ws';
+import type { ExtendedWebSocketServer } from '../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 
 export function reloadAllClients(wss: ExtendedWebSocketServer) {
 	return function (channel: string) {

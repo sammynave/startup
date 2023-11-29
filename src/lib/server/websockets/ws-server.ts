@@ -1,8 +1,11 @@
 import { nanoid } from 'nanoid';
 import { WebSocketServer } from 'ws';
-import type { ExtendedWebSocket, ExtendedWebSocketServer } from './utils';
 import type { IncomingMessage } from 'http';
 import type { Duplex } from 'stream';
+import type {
+	ExtendedWebSocket,
+	ExtendedWebSocketServer
+} from '../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 
 const isUrl = (url: string) => {
 	try {
@@ -15,6 +18,12 @@ const isUrl = (url: string) => {
 function pathname(req: IncomingMessage) {
 	return req.url && isUrl(req.url) ? new URL(req.url).pathname : null;
 }
+type SymType = WsServer['sym'];
+
+export type ExtendedGlobal = typeof globalThis & {
+	[SymType: SymType]: ExtendedWebSocketServer;
+};
+
 export class WsServer {
 	endpoint: string;
 	sym: symbol;
@@ -25,11 +34,11 @@ export class WsServer {
 	}
 
 	getWss() {
-		return globalThis[this.sym];
+		return (globalThis as ExtendedGlobal)[this.sym];
 	}
 
 	setWss(wss: ExtendedWebSocketServer) {
-		globalThis[this.sym] = wss;
+		(globalThis as ExtendedGlobal)[this.sym] = wss;
 		return wss;
 	}
 

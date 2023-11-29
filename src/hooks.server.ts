@@ -8,6 +8,7 @@ import { servers } from '../vite-plugins/vite-plugin-svelte-kit-integrated-webso
 import { COMBINED_PATH } from '$lib/websockets/constants';
 import { connectionHandler } from '$lib/server/websockets/handler';
 import { WebSocket } from 'ws';
+import { dev } from '$app/environment';
 
 if (process.env.WORKER && !building) {
 	await register();
@@ -45,22 +46,25 @@ function startupCombinedWebsocketServer(wss: ExtendedWebSocketServer) {
 	if (combinedWssInitialized) {
 		return;
 	}
+
 	// Handle weirdness with HMR
 	// We need to manually remove listeners created in this file,
 	// other wise we never clean them up when HMR reloads
-	if (combinedWssInitialized === false && typeof wss !== 'undefined') {
-		wss.listeners('connection').forEach((listener) => {
-			if (listener.name === 'hooksConnectionHandler') {
-				wss.removeListener('connection', listener);
-				const openClients = [...wss.clients].filter(
-					(client) => client.readyState !== WebSocket.OPEN
-				);
-				wss.clients.clear();
-				openClients.forEach((client) => {
-					wss.clients.add(client);
-				});
-			}
-		});
+	if (dev) {
+		if (combinedWssInitialized === false && typeof wss !== 'undefined') {
+			wss.listeners('connection').forEach((listener) => {
+				if (listener.name === 'hooksConnectionHandler') {
+					wss.removeListener('connection', listener as (...args: unknown[]) => void);
+					const openClients = [...wss.clients].filter(
+						(client) => client.readyState !== WebSocket.OPEN
+					);
+					wss.clients.clear();
+					openClients.forEach((client) => {
+						wss.clients.add(client);
+					});
+				}
+			});
+		}
 	}
 
 	if (typeof wss !== 'undefined') {

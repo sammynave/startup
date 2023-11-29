@@ -4,7 +4,7 @@ import { WsServer } from '../src/lib/server/websockets/ws-server';
 import { COMBINED_PATH } from '../src/lib/websockets/constants';
 import type { Session } from 'lucia';
 import type { Server, WebSocket } from 'ws';
-import type { ViteDevServer } from 'vite';
+import type { ViteDevServer, PreviewServerForHook } from 'vite';
 
 export declare class ExtendedWebSocket extends WebSocket {
 	socketId: string;
@@ -25,7 +25,6 @@ export const onHttpServerUpgrade = (req: IncomingMessage, sock: Duplex, head: Bu
 export const createWSSGlobalInstances = () => {
 	Object.values(servers).forEach((s) => s.start());
 };
-
 export function integratedWebsocketServer() {
 	return {
 		name: 'integratedWebsocketServer',
@@ -33,7 +32,7 @@ export function integratedWebsocketServer() {
 			createWSSGlobalInstances();
 			server.httpServer?.on('upgrade', onHttpServerUpgrade);
 		},
-		configurePreviewServer(server: ViteDevServer) {
+		configurePreviewServer(server: PreviewServerForHook) {
 			createWSSGlobalInstances();
 			server.httpServer?.on('upgrade', onHttpServerUpgrade);
 		}
