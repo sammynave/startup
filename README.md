@@ -10,7 +10,7 @@
 - [ ] payment (stripe?)
 - [ ] CLI/install script to choose which examples/config you want
 
-# TOOD someday
+# TODO someday
 - [ ] CRDT + offline first + absurdSQL
 - [ ] liveblocks/partkit style collaboration
 - [ ] https://electric-sql.com/docs/intro/local-first
