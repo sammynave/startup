@@ -3,8 +3,11 @@ import { redirect, type Handle, type RequestEvent } from '@sveltejs/kit';
 import { register } from '$lib/server/workers/example-worker.js';
 import { building } from '$app/environment';
 import type { Session } from 'lucia';
+import type { ExtendedWebSocketServer } from '../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
+import { servers } from '../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
+import { COMBINED_PATH } from '$lib/websockets/constants';
 import { connectionHandler } from '$lib/server/websockets/handler';
-import { getWss, type ExtendedWebSocketServer } from '$lib/server/websockets/utils';
+import { WebSocket } from 'ws';
 
 if (process.env.WORKER && !building) {
 	await register();
@@ -37,21 +40,32 @@ async function handleAuth({ event, session }: { event: RequestEvent; session: Se
 	}
 }
 
-let wssInitialized = false;
-function startupWebsocketServer(wss: ExtendedWebSocketServer) {
-	if (wssInitialized) {
+let combinedWssInitialized = false;
+function startupCombinedWebsocketServer(wss: ExtendedWebSocketServer) {
+	if (combinedWssInitialized) {
 		return;
 	}
 	// Handle weirdness with HMR
-	// TODO: only do this in dev?
-	if (wssInitialized === false && typeof wss !== 'undefined') {
-		wss.removeAllListeners();
-		wss.clients.clear();
+	// We need to manually remove listeners created in this file,
+	// other wise we never clean them up when HMR reloads
+	if (combinedWssInitialized === false && typeof wss !== 'undefined') {
+		wss.listeners('connection').forEach((listener) => {
+			if (listener.name === 'hooksConnectionHandler') {
+				wss.removeListener('connection', listener);
+				const openClients = [...wss.clients].filter(
+					(client) => client.readyState !== WebSocket.OPEN
+				);
+				wss.clients.clear();
+				openClients.forEach((client) => {
+					wss.clients.add(client);
+				});
+			}
+		});
 	}
 
 	if (typeof wss !== 'undefined') {
 		wss.on('connection', connectionHandler(wss));
-		wssInitialized = true;
+		combinedWssInitialized = true;
 	}
 	return wss;
 }
@@ -63,8 +77,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	await handleAuth({ event, session });
 
 	if (!process.env.WORKER) {
-		const wss = getWss();
-		startupWebsocketServer(wss);
+		const wss = servers[COMBINED_PATH].getWss();
+
+		startupCombinedWebsocketServer(wss);
 
 		if (!building) {
 			if (wss !== undefined) {

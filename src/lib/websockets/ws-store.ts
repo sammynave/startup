@@ -1,9 +1,7 @@
 import { browser } from '$app/environment';
-import { page } from '$app/stores';
-import { get } from 'svelte/store';
 
 type Subscription = (value: WebSocket | null) => void;
-export function wsStore({ channel }: { channel: string }) {
+export function wsStore({ url }: { url: string }) {
 	const subscriptions = new Set<Subscription>();
 
 	let ws: WebSocket | null = null;
@@ -12,9 +10,6 @@ export function wsStore({ channel }: { channel: string }) {
 		if (ws) {
 			return;
 		}
-		const { protocol, host } = get(page).url;
-		const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-		const url = `${wsProtocol}//${host}/websocket?channel=${channel}`;
 		ws = new WebSocket(url);
 		ws.addEventListener('error', (error) => console.error(error));
 		ws.addEventListener('open', () => subscriptions.forEach((subscription) => subscription(ws)));
@@ -29,9 +24,10 @@ export function wsStore({ channel }: { channel: string }) {
 
 	return {
 		subscribe(subscription: Subscription) {
-			if (browser) {
-				open();
+			if (!browser) {
+				return () => undefined;
 			}
+			open();
 			subscriptions.add(subscription);
 			return () => {
 				subscriptions.delete(subscription);

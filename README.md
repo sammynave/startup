@@ -71,23 +71,28 @@ You'll also need to create an `Env Group` to store the env `PUBLIC_FAKTORY_URL` 
 
 See the [Render docs](https://render.com/docs/blueprint-spec) for more info
 
-# Integrated websockets server
+# Integrated websockets server(s)
 
-This repo contains an example (`/src/routes/app/websocket-example` -> `http://localhost:5173/app/websocket-example`) of how to setup websockets on the same port in the same process as the svelte server. (taken from this repo)[https://github.com/suhaildawood/SvelteKit-integrated-WebSocket].
+TODO - rewrite this
+
+This repo contains two examples (`/src/routes/app/websocket-example/using-pub-sub` and `/using-pub-sub` -> `http://localhost:5173/app/websocket-example/using-pub-sub` and `/using-streams`) of how to setup websockets on the same port in the same process as the svelte server. (taken from this repo)[https://github.com/suhaildawood/SvelteKit-integrated-WebSocket].
 
 Key files:
 
 -  `prod-server.ts` - this is how you'll start your prod server (see `render.yaml`)
 -  `vite.config.ts` - here we create a small plugin to insert the websocket server at `/websocket` path for the dev and preview servers (`configureServer` and `configurePreviewServer`)
--  `src/lib/server/websockets/utils.ts` - this file contains the functions that create the server (`createWSSGlobalInstance`) and host it (`onHttpServerUpgrade`) referenced in the step above. This technique relies on attaching the websocket server to the global state. This file also has two utility functions to help out when getting and setting the websocket server: `getWss` and `setWss`
--  `src/hooks.server.ts` - this file initializes our websocket server and adds a reference to it to `locals`. this way we can trigger events from other places in our Svelte server, for example, the default action in `src/routes/app/websocket-example/+page.server.ts`. Here we're grabbing the server (`wss`) off of the `event.locals` object and then triggering a reload for all of our connected clients.
+-  `vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.ts` - this file contains the functions that create the server (`createWSSGlobalInstance`) and host it (`onHttpServerUpgrade`) referenced in the step above. This technique relies on attaching the websocket server to the global state.
+-  `ws-server.ts` This file also has utility functions to help out when getting and setting the websocket server: `getStreamWss/getPubSubWss` and `setStreamsWss/setPubSubWss`
+-  `src/hooks.server.ts` - this file initializes our websocket servers and adds a reference to it to `locals`. this way we can trigger events from other places in our Svelte server, for example, the default action in `src/routes/app/websocket-example/using-streams/+page.server.ts`. Here we're grabbing the server (`sWss`) off of the `event.locals` object and then triggering a reload for all of our connected clients.
 
 Example files that make use of this setup:
 
-`src/lib/server/websockets` - this directory contains an example of how one might implement a chat room example and a "presence" example (i.e. who else is here?).
+`src/lib/server/websockets` - this directory contains examples of how one might implement a chat room example and a "presence" example (i.e. who else is here?).
 
 - `handler.ts` - this file is responsible for setting up client connections. it handles session auth (via `Lucia`) and it set ups and coordinates the features we want to use over websockets (`Chat` and `Presence`)
-- `chat.ts` and `presence.ts` are examples of how one might group together concerns into separate files/stay organized and still be able to share a single socket per client. they make use of Redis' `pub/sub` feature so we can scale across multiple instances of this server. (NOTE: Redis' Pub/Sub exhibits **at-most-once** message delivery semantics, meaning if a message is published and there are no subscribers connected, it will never be delivered. If your app requires stronger delivery guarantees. Look into (Redis Streams)[https://redis.io/docs/data-types/streams/]. Messages in streams are persisted, and support both at-most-once as well as at-least-once delivery semantics. TODO: maybe make Streams the default implementation or look into using Postgres' pub/sub. Getting rid of the Redis infrastructure might be worth it 🤷‍♂️)
+- `chat.ts` and `presence.ts` are examples of how one might group together concerns into separate files/stay organized and still be able to share a single socket per client.
+- The pub/sub version makes use of Redis' `pub/sub` feature so we can scale across multiple instances of this server. NOTE: Redis' Pub/Sub exhibits **at-most-once** message delivery semantics, meaning if a message is published and there are no subscribers connected, it will never be delivered.
+- If your app requires stronger delivery guarantees look at the Redis Streams example. Messages in streams are persisted, and support both **at-most-once** as well as **at-least-once** delivery semantics.
 - `redis-client.ts` - since you can't use the same Redis client for both publish and subscribe, this file just exports 3 different clients that can be reused throughout the app
 
 `src/lib/websockets` - this directory contains all of the client side examples for implementing chat and "presence".

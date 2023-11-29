@@ -1,0 +1,14 @@
+{
+	"cSpell.words": [
+		"BYSCORE",
+		"hget",
+		"hgetall",
+		"hset",
+		"xadd",
+		"xrange",
+		"xread",
+		"zadd",
+		"zrange",
+		"zrem"
+	]
+}

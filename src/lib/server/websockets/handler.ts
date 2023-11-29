@@ -1,62 +1,65 @@
-import { auth } from '../lucia';
-import WebSocket from 'ws';
-import type { ExtendedWebSocket, ExtendedWebSocketServer } from './utils';
 import type { IncomingMessage } from 'http';
-import { Presence } from './presence';
-import { Chat } from './chat';
+import { PresenceStreams } from './features/presence-streams';
+import { ChatStreams } from './features/chat-streams.js';
+import { sessionFrom } from './request-utils.js';
+import { ChatPubSub } from './features/chat-pub-sub.js';
+import type {
+	ExtendedWebSocket,
+	ExtendedWebSocketServer
+} from '../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
+import { PresencePubSub } from './features/presence-pub-sub';
 
-export function reloadAllClients(wss: ExtendedWebSocketServer) {
-	return function (channel: string) {
-		wss.clients.forEach((client) => {
-			if (client.readyState === WebSocket.OPEN) {
-				client.send(JSON.stringify({ type: 'reload', channel }), {
-					binary: false
-				});
-			}
-		});
-	};
+const FEATURE_STRATEGIES = {
+	chat: {
+		'redis-streams': ChatStreams,
+		'redis-pubsub': ChatPubSub
+	},
+	presence: {
+		'redis-streams': PresenceStreams,
+		'redis-pubsub': PresencePubSub
+	}
+};
+
+type Feature = {
+	type: keyof typeof FEATURE_STRATEGIES;
+	strategy: keyof (typeof FEATURE_STRATEGIES)[keyof typeof FEATURE_STRATEGIES];
+	stream: string;
+};
+
+function getFeatureFor(
+	type: keyof typeof FEATURE_STRATEGIES,
+	strategy: keyof (typeof FEATURE_STRATEGIES)[keyof typeof FEATURE_STRATEGIES]
+) {
+	return FEATURE_STRATEGIES[type][strategy];
 }
 
-function channelFrom(request: IncomingMessage) {
-	const url = new URL(`${request.headers.origin}${request.url}`);
-	return url.searchParams.get('channel');
-}
-
-async function sessionFrom(request: IncomingMessage) {
-	const sessionId = auth.readSessionCookie(request.headers.cookie);
-	return sessionId ? await auth.validateSession(sessionId) : null; // note: `validateSession()` throws an error if session is invalid
-}
-
-export const connectionHandler =
-	(wss: ExtendedWebSocketServer) => async (ws: ExtendedWebSocket, request: IncomingMessage) => {
-		const channel = channelFrom(request);
-		if (channel === null) {
-			ws.close(1008, 'No channel specified');
-			return;
-		}
-
+export function connectionHandler(wss: ExtendedWebSocketServer) {
+	return async function hooksConnectionHandler(ws: ExtendedWebSocket, request: IncomingMessage) {
 		const session = await sessionFrom(request);
-
 		if (session) {
 			ws.session = session;
-			ws.channel = channel;
 		} else {
 			ws.close(1008, 'User not authenticated');
 			return;
 		}
 
-		const chat = await Chat.init({ wss, channel });
-		const presence = await Presence.init({ wss, channel });
+		const url = new URL(`${request.headers.origin}${request.url}`);
+		const features = url.searchParams.get('features');
 
-		await presence.add(session.user.username);
-		await chat.connected(session.user.username);
+		if (features === null) {
+			console.error('NO FEATURES');
+			return;
+		}
 
-		ws.on('message', async (data: string) => {
-			const { message } = JSON.parse(data);
-			await chat.received({ username: session.user.username, message });
-		});
-		ws.on('close', async () => {
-			await chat.disconnected(session.user.username);
-			await presence.remove(session.user.username);
+		JSON.parse(features).forEach(async (feature: Feature) => {
+			if (!feature.stream) {
+				console.log('CLOSING - no stream');
+				ws.close(1008, `No channel specified for ${feature.type}`);
+				return;
+			}
+
+			const f = getFeatureFor(feature.type, feature.strategy);
+			await f.init({ ws, wss, channel: feature.stream, username: session.user.username });
 		});
 	};
+}

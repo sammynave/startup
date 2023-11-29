@@ -33,7 +33,7 @@
 			<Form.Validation />
 		</Form.Field>
 	</Form.Item>
-	<Form.Button type="submit" disabled={submitting}>Change username</Form.Button>
+	<Form.Button class="mt-2" type="submit" disabled={submitting}>Change username</Form.Button>
 	{#if message}
 		<p class="text-positive-foreground">{message}</p>
 	{/if}

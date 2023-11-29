@@ -6,17 +6,18 @@
 	import ChangeUsername from './change-username.svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import type { PageData } from './$types';
 
-	export let data;
+	export let data: PageData;
 
 	$: tab = $page.url.searchParams.get('tab') || 'username';
 
 	function setTab(tab: string | undefined) {
-		const query = new URLSearchParams($page.url.searchParams.toString());
+		const query = $page.url.searchParams;
 		if (tab) {
 			query.set('tab', tab);
 		} else {
-			query.delete('tab');
+			query.set('tab', 'username');
 		}
 
 		goto(`?${query.toString()}`);
@@ -34,6 +35,7 @@
 				<Tabs.Trigger value="username">Username</Tabs.Trigger>
 				<Tabs.Trigger value="password">Password</Tabs.Trigger>
 			</Tabs.List>
+
 			{#if data.usernameForm}
 				<Tabs.Content value="username">
 					<Card.Root>
@@ -47,6 +49,7 @@
 					</Card.Root>
 				</Tabs.Content>
 			{/if}
+
 			{#if data.passwordForm}
 				<Tabs.Content value="password">
 					<Card.Root>
@@ -54,7 +57,7 @@
 							<Card.Title>Password</Card.Title>
 							<Card.Description>Change your password here.</Card.Description>
 						</Card.Header>
-						<Card.Content class="space-y-2">
+						<Card.Content>
 							<ChangePassword form={data.passwordForm} />
 						</Card.Content>
 					</Card.Root>
