@@ -1,58 +1,23 @@
 import { client, create } from '../redis-client';
 import { WebSocket } from 'ws';
-import type {
-	ExtendedWebSocket,
-	ExtendedWebSocketServer
-} from '../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
+import type { ExtendedWebSocket } from '../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 import type { Redis } from 'ioredis';
 
 export class ChatPubSub {
-	ws: ExtendedWebSocket;
-	wss: ExtendedWebSocketServer;
 	channel: string;
-	redisClient: Redis;
-	sub: Redis;
-	username: string;
+	private ws: ExtendedWebSocket;
+	private redisClient: Redis = client();
 
-	private constructor({
-		ws,
-		wss,
-		channel,
-		sub,
-		redisClient,
-		username
-	}: {
-		ws: ExtendedWebSocket;
-		wss: ExtendedWebSocketServer;
-		channel: string;
-		sub: Redis;
-		redisClient: Redis;
-		username: string;
-	}) {
-		this.ws = ws;
-		this.wss = wss;
-		this.channel = channel;
-		this.sub = sub;
-		this.redisClient = redisClient;
-		this.username = username;
-	}
+	/*
+	 This is the preferred way to instantiate this class for 2 reasons:
+	  1. If we use the class in multiple places, we want to avoid duplicating all of this setup.
+	 	2. Constructors can not be asynchronous so the only way to encapsulate the setup is through
+		   a static method
+	*/
+	static async init({ ws, channel }: { channel: string; ws: ExtendedWebSocket }) {
+		const chat = new ChatPubSub({ ws, channel });
 
-	static async init({
-		ws,
-		wss,
-		channel,
-		username
-	}: {
-		wss: ExtendedWebSocketServer;
-		channel: string;
-		ws: ExtendedWebSocket;
-		username: string;
-	}) {
-		const redisClient = client();
 		const sub = create();
-
-		const chat = new ChatPubSub({ ws, wss, channel, sub, redisClient, username });
-
 		await sub.subscribe(chat.channel, (err) => {
 			if (err) {
 				console.error('Failed to subscribe: %s', err.message);
@@ -64,18 +29,24 @@ export class ChatPubSub {
 			}
 		});
 
-		await chat.connected(username);
-
 		ws.on('message', async (data: string) => {
 			const { message } = JSON.parse(data);
-			await chat.received({ username, message });
+			await chat.received(message);
 		});
+
 		ws.on('close', async () => {
-			await chat.disconnected(username);
+			await chat.disconnected();
 			subscription.unsubscribe();
 		});
 
+		await chat.connected();
+
 		return chat;
+	}
+
+	private constructor({ ws, channel }: { ws: ExtendedWebSocket; channel: string }) {
+		this.ws = ws;
+		this.channel = channel;
 	}
 
 	private notify(message: string) {
@@ -84,29 +55,29 @@ export class ChatPubSub {
 		}
 	}
 
-	async connected(username: string) {
+	private async connected() {
 		const message = JSON.stringify({
 			type: 'connect',
 			channel: this.channel,
-			message: `${username} joined`
+			message: `${this.ws.session.user.username} joined`
 		});
 		await this.redisClient.publish(this.channel, message);
 	}
 
-	async disconnected(username: string) {
+	private async disconnected() {
 		const message = JSON.stringify({
 			type: 'disconnect',
 			channel: this.channel,
-			message: `${username} left`
+			message: `${this.ws.session.user.username} left`
 		});
 		await this.redisClient.publish(this.channel, message);
 	}
 
-	async received({ username, message }: { username: string; message: string }) {
+	private async received(message: string) {
 		const chatMessage = JSON.stringify({
 			type: 'message',
 			channel: this.channel,
-			username,
+			username: this.ws.session.user.username,
 			message
 		});
 		await this.redisClient.lpush(this.channel, chatMessage);

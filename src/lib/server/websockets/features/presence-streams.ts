@@ -1,55 +1,24 @@
 import type { Redis } from 'ioredis';
 import { client } from '../redis-client.js';
 import { listener } from '../stream-listener.js';
-import type {
-	ExtendedWebSocket,
-	ExtendedWebSocketServer
-} from '../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.js';
+import type { ExtendedWebSocket } from '../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.js';
 import { WebSocket } from 'ws';
 
 export class PresenceStreams {
-	wss: ExtendedWebSocketServer;
 	channel: string;
-	redisClient: Redis = client();
-	username: string;
-	ws: ExtendedWebSocket;
+	private redisClient: Redis = client();
+	private ws: ExtendedWebSocket;
 
-	private constructor({
-		wss,
-		channel,
-		username,
-		ws
-	}: {
-		wss: ExtendedWebSocketServer;
-		channel: string;
-		username: string;
-		ws: ExtendedWebSocket;
-	}) {
-		this.wss = wss;
-		this.channel = channel;
-		this.username = username;
-		this.ws = ws;
-	}
-
-	static async init({
-		ws,
-		wss,
-		channel,
-		username
-	}: {
-		ws: ExtendedWebSocket;
-		wss: ExtendedWebSocketServer;
-		channel: string;
-		username: string;
-	}) {
-		const presence = new PresenceStreams({ ws, wss, channel, username });
+	static async init({ ws, channel }: { ws: ExtendedWebSocket; channel: string }) {
+		const presence = new PresenceStreams({ ws, channel });
 		await listener.addClient(presence);
-		await presence.connected(username);
+
 		ws.on('close', async () => {
-			await presence.disconnected(username);
+			await presence.disconnected();
 			listener.removeClient(presence);
 		});
-		await presence.notify();
+
+		await presence.connected();
 		return presence;
 	}
 
@@ -61,7 +30,12 @@ export class PresenceStreams {
 		}
 	}
 
-	async presentUsers() {
+	private constructor({ channel, ws }: { channel: string; ws: ExtendedWebSocket }) {
+		this.channel = channel;
+		this.ws = ws;
+	}
+
+	private async presentUsers() {
 		// return all entries in zrange sorted by oldest first
 		const results = await this.redisClient.zrange(
 			`set:${this.channel}`,
@@ -72,18 +46,19 @@ export class PresenceStreams {
 		return results;
 	}
 
-	async connected(username: string) {
+	private async connected() {
 		// Insert username at current timestamp in zrange
-		await this.redisClient.zadd(`set:${this.channel}`, Date.now(), username);
+		await this.redisClient.zadd(`set:${this.channel}`, Date.now(), this.ws.session.user.username);
+		await this.notify();
 		await this.broadcast();
 	}
 
-	async disconnected(username: string) {
-		await this.redisClient.zrem(`set:${this.channel}`, username);
+	private async disconnected() {
+		await this.redisClient.zrem(`set:${this.channel}`, this.ws.session.user.username);
 		await this.broadcast();
 	}
 
-	async broadcast() {
+	private async broadcast() {
 		await this.redisClient.xadd(this.channel, '*', 'type', 'presence');
 	}
 }

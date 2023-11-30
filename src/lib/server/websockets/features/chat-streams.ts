@@ -3,28 +3,11 @@ import { client } from '../redis-client';
 import { listener } from '../stream-listener.js';
 import type { ExtendedWebSocket } from '../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 import { WebSocket } from 'ws';
-import { nanoid } from 'nanoid';
 
 export class ChatStreams {
 	channel: string;
-	username: string;
-	ws: ExtendedWebSocket;
-	redisClient: Redis = client();
-	id: string = nanoid();
-
-	private constructor({
-		channel,
-		username,
-		ws
-	}: {
-		channel: string;
-		username: string;
-		ws: ExtendedWebSocket;
-	}) {
-		this.channel = channel;
-		this.username = username;
-		this.ws = ws;
-	}
+	private ws: ExtendedWebSocket;
+	private redisClient: Redis = client();
 
 	/*
 	 This is the preferred way to instantiate this class for 2 reasons:
@@ -32,51 +15,24 @@ export class ChatStreams {
 	 	2. Constructors can not be asynchronous so the only way to encapsulate the setup is through
 		   a static method
 	*/
-	static async init({
-		ws,
-		channel,
-		username
-	}: {
-		ws: ExtendedWebSocket;
-		channel: string;
-		username: string;
-	}) {
+	static async init({ ws, channel }: { ws: ExtendedWebSocket; channel: string }) {
 		const chat = new ChatStreams({
 			ws,
-			channel,
-			username
+			channel
 		});
+		// Listen for messages from the user of this socket
+		ws.on('message', async (data: string) => await chat.received(JSON.parse(data).message));
+
+		// Let everyone know that this user has left the chat
+		ws.on('close', async () => await chat.disconnected());
 
 		// Register this chat instance with the redis stream listener
 		await listener.addClient(chat);
 
-		// Send down any unseen messages that may have happened
-		// between page load and instantiation
-		await chat.notify();
-
 		// Let everyone know that this user joined the chat
-		await chat.connected(chat.username);
-
-		// Listen for messages from the user of this socket
-		ws.on('message', async (data: string) => {
-			const parsed = JSON.parse(data);
-			await chat.received({ username, message: parsed.message });
-		});
-
-		// Let everyone know that this user has left the chat
-		ws.on('close', async () => {
-			await chat.disconnected(username);
-		});
+		await chat.connected();
 
 		return chat;
-	}
-
-	async getLastSeenId() {
-		return await this.redisClient.hget(`users:${this.username}`, this.channel);
-	}
-
-	async setLastSeenId(id: string) {
-		return await this.redisClient.hset(`users:${this.username}`, this.channel, id);
 	}
 
 	async notify() {
@@ -101,7 +57,21 @@ export class ChatStreams {
 		}
 	}
 
-	async connected(username: string) {
+	private constructor({ channel, ws }: { channel: string; ws: ExtendedWebSocket }) {
+		this.channel = channel;
+		this.ws = ws;
+	}
+
+	private async getLastSeenId() {
+		return await this.redisClient.hget(`users:${this.ws.session.user.username}`, this.channel);
+	}
+
+	private async setLastSeenId(id: string) {
+		return await this.redisClient.hset(`users:${this.ws.session.user.username}`, this.channel, id);
+	}
+
+	private async connected() {
+		const username = this.ws.session.user.username;
 		const id = await this.redisClient.xadd(this.channel, '*', 'type', 'message');
 		await this.redisClient.hset(`message:${id}`, {
 			id,
@@ -109,9 +79,14 @@ export class ChatStreams {
 			channel: this.channel,
 			message: `${username} joined`
 		});
+
+		// Send down any unseen messages that may have happened
+		// between page load and instantiation
+		await this.notify();
 	}
 
-	async disconnected(username: string) {
+	private async disconnected() {
+		const username = this.ws.session.user.username;
 		await listener.removeClient(this);
 		const id = await this.redisClient.xadd(this.channel, '*', 'type', 'message');
 		await this.redisClient.hset(`message:${id}`, {
@@ -122,14 +97,14 @@ export class ChatStreams {
 		});
 	}
 
-	async received({ username, message }: { username: string; message: string }) {
+	private async received(message: string) {
 		// xadd inserts message id into stream
 		const id = await this.redisClient.xadd(this.channel, '*', 'type', 'message');
 		await this.redisClient.hset(`message:${id}`, {
 			id,
 			type: 'message',
 			channel: this.channel,
-			username,
+			username: this.ws.session.user.username,
 			message
 		});
 	}
