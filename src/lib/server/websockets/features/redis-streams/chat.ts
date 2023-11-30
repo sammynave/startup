@@ -1,10 +1,10 @@
 import type { Redis } from 'ioredis';
-import { client } from '../redis-client';
-import { listener } from '../stream-listener.js';
-import type { ExtendedWebSocket } from '../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
+import { client } from '../../redis-client';
+import { listener } from '../../stream-listener.js';
+import type { ExtendedWebSocket } from '../../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 import { WebSocket } from 'ws';
 
-export class ChatStreams {
+export class Chat {
 	channel: string;
 	private ws: ExtendedWebSocket;
 	private redisClient: Redis = client();
@@ -16,7 +16,7 @@ export class ChatStreams {
 		   a static method
 	*/
 	static async init({ ws, channel }: { ws: ExtendedWebSocket; channel: string }) {
-		const chat = new ChatStreams({
+		const chat = new Chat({
 			ws,
 			channel
 		});
@@ -26,11 +26,11 @@ export class ChatStreams {
 		// Let everyone know that this user has left the chat
 		ws.on('close', async () => await chat.disconnected());
 
-		// Register this chat instance with the redis stream listener
-		await listener.addClient(chat);
-
 		// Let everyone know that this user joined the chat
 		await chat.connected();
+
+		// Register this chat instance with the redis stream listener
+		await listener.addClient(chat);
 
 		return chat;
 	}

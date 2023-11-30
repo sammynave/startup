@@ -1,15 +1,15 @@
 import type { Redis } from 'ioredis';
-import { client, create } from '../redis-client.js';
+import { client, create } from '../../redis-client.js';
 import { WebSocket } from 'ws';
-import type { ExtendedWebSocket } from '../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.js';
+import type { ExtendedWebSocket } from '../../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.js';
 
-export class PresencePubSub {
+export class Presence {
 	channel: string;
 	private pub: Redis = client();
 	private ws: ExtendedWebSocket;
 
 	static async init({ channel, ws }: { channel: string; ws: ExtendedWebSocket }) {
-		const presence = new PresencePubSub({ ws, channel });
+		const presence = new Presence({ ws, channel });
 
 		const sub = create();
 		await sub.subscribe(presence.channel, (err) => {

@@ -6,8 +6,8 @@ import { reloadAllClients } from '$lib/server/websockets/reload-clients';
 import { COMBINED_PATH } from '$lib/websockets/constants';
 
 const redisClient = client();
-const chatStream = 'chat_messages:pubsub:pubsub-chat';
-const presenceStream = 'presence:pubsub:pubsub-chat';
+const chatStream = 'chat_messages:pub-sub:pub-sub-chat';
+const presenceStream = 'presence:pub-sub:pub-sub-chat';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { username } = locals.user;
@@ -16,8 +16,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const { protocol, host } = url;
 	const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
 	const features = [
-		{ type: 'chat', strategy: 'redis-pubsub', stream: chatStream },
-		{ type: 'presence', strategy: 'redis-pubsub', stream: presenceStream }
+		{ type: 'chat', strategy: 'redis-pub-sub', stream: chatStream },
+		{ type: 'presence', strategy: 'redis-pub-sub', stream: presenceStream }
 	];
 	return {
 		url: `${wsProtocol}//${host}${COMBINED_PATH}?features=${JSON.stringify(features)}`,
@@ -30,7 +30,7 @@ export const actions: Actions = {
 	default: async ({ locals }) => {
 		redisClient.flushall();
 		if (locals.wss) {
-			reloadAllClients(locals.wss)('pubsub-chat');
+			reloadAllClients(locals.wss)('pub-sub-chat');
 		}
 		return true;
 	}

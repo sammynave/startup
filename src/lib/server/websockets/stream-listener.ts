@@ -1,15 +1,14 @@
 import type { Redis } from 'ioredis';
 import { create } from './redis-client';
-import type { ChatStreams } from './features/chat-streams';
-import type { PresenceStreams } from './features/presence-streams';
 
-// This can be more generic.
-// A client can be any object with a `notify` method and `channel` member
-type Clients = Set<ChatStreams | PresenceStreams>;
-
+type Client = {
+	channel: string;
+	notify: () => void;
+};
+type Clients = Set<Client>;
 type StreamName = string;
 type LastSeenId = string;
-type StreamArgs = Map<ChatStreams | PresenceStreams, [StreamName, LastSeenId]>;
+type StreamArgs = Map<Client, [StreamName, LastSeenId]>;
 
 class StreamReader {
 	redisClient: Redis = create();
@@ -31,47 +30,6 @@ class StreamReader {
 		this.clients = new Set();
 		this.streamArgs = new Map();
 		this.listening = false;
-	}
-
-	getStreams() {
-		const streamNames: Set<StreamName> = new Set();
-		const lastSeenIds: LastSeenId[] = [];
-		return [...this.streamArgs.values()]
-			.reduce(
-				(acc, [streamName, lastSeenId]) => {
-					// Use a Set for stream names.
-					// There should be no duplicates
-					if (acc[0].has(streamName)) {
-						return acc;
-					} else {
-						acc[0].add(streamName);
-						// Because of the special `$` symbol for stream ID,
-						// this needs to be an array so we can have duplicates.
-						// These args need to be balanced, meaning if there are two
-						// streams there should be two IDs
-						acc[1].push(lastSeenId);
-					}
-					return acc;
-				},
-				[streamNames, lastSeenIds] as [typeof streamNames, typeof lastSeenIds]
-			)
-			.map((set: typeof streamNames | typeof lastSeenIds) => [...set])
-			.flat();
-	}
-
-	*readStream() {
-		while (true) {
-			if (this.listening) {
-				try {
-					yield this.redisClient.xread('BLOCK', 3000, 'STREAMS', ...this.getStreams());
-				} catch (err) {
-					console.error(err);
-					break;
-				}
-			} else {
-				return;
-			}
-		}
 	}
 
 	async listenForMessages() {
@@ -98,6 +56,62 @@ class StreamReader {
 			}
 		}
 	}
+
+	/*
+		NOTE: These args returned from this method need to be balanced,
+		meaning if there are two streams there should be two IDs
+
+		@return [
+			'presence:streams:streams-chat',
+  		'chat_messages:streams:streams-chat',
+  		'1701377504479-0', // this is the id for 'presence:streams:streams-chat'
+  		'$'                // this is the id for 'chat_messages:streams:streams-chat'
+		]
+	*/
+	private buildStreamIds() {
+		const streamNames: Set<StreamName> = new Set();
+		const lastSeenIds: LastSeenId[] = [];
+		return [...this.streamArgs.values()]
+			.reduce(
+				(acc, [streamName, lastSeenId]) => {
+					// Use a Set for stream names.
+					// There should be no duplicates
+					if (acc[0].has(streamName)) {
+						return acc;
+					} else {
+						acc[0].add(streamName);
+						/*
+							Because of the special `$` symbol for stream ID,
+						  this needs to be an array so we can support duplicates across streams.
+
+							For example, if there have been no messages in the Presence stream addClient
+							no messages in the Chat stream, we need the final value to be:
+							['presence:stream', 'chat:stream', '$', '$']
+						*/
+						acc[1].push(lastSeenId);
+					}
+					return acc;
+				},
+				[streamNames, lastSeenIds] as [typeof streamNames, typeof lastSeenIds]
+			)
+			.map((set: typeof streamNames | typeof lastSeenIds) => [...set])
+			.flat();
+	}
+
+	private *readStream() {
+		while (true) {
+			if (this.listening) {
+				try {
+					yield this.redisClient.xread('BLOCK', 3000, 'STREAMS', ...this.buildStreamIds());
+				} catch (err) {
+					console.error(err);
+					break;
+				}
+			} else {
+				return;
+			}
+		}
+	}
 }
 
 class StreamListener {
@@ -106,7 +120,7 @@ class StreamListener {
 	streamArgs: StreamArgs = new Map();
 	listening = false;
 
-	addClient(client: ChatStreams | PresenceStreams) {
+	addClient(client: Client) {
 		this.clients.add(client);
 		this.streamArgs.set(client, [client.channel, '$']);
 
@@ -120,7 +134,7 @@ class StreamListener {
 		}
 	}
 
-	removeClient(client: ChatStreams | PresenceStreams) {
+	removeClient(client: Client) {
 		this.clients.delete(client);
 		this.streamArgs.delete(client);
 

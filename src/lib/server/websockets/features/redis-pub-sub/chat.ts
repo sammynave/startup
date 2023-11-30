@@ -1,9 +1,9 @@
-import { client, create } from '../redis-client';
+import { client, create } from '../../redis-client';
 import { WebSocket } from 'ws';
-import type { ExtendedWebSocket } from '../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
+import type { ExtendedWebSocket } from '../../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 import type { Redis } from 'ioredis';
 
-export class ChatPubSub {
+export class Chat {
 	channel: string;
 	private ws: ExtendedWebSocket;
 	private redisClient: Redis = client();
@@ -15,7 +15,7 @@ export class ChatPubSub {
 		   a static method
 	*/
 	static async init({ ws, channel }: { channel: string; ws: ExtendedWebSocket }) {
-		const chat = new ChatPubSub({ ws, channel });
+		const chat = new Chat({ ws, channel });
 
 		const sub = create();
 		await sub.subscribe(chat.channel, (err) => {

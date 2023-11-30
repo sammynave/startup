@@ -6,7 +6,7 @@ import type { Session } from 'lucia';
 import type { ExtendedWebSocketServer } from '../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 import { servers } from '../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 import { COMBINED_PATH } from '$lib/websockets/constants';
-import { connectionHandler } from '$lib/server/websockets/handler';
+import { hooksConnectionHandler } from '$lib/server/websockets/handler';
 import { WebSocket } from 'ws';
 import { dev } from '$app/environment';
 
@@ -68,7 +68,7 @@ function startupCombinedWebsocketServer(wss: ExtendedWebSocketServer) {
 	}
 
 	if (typeof wss !== 'undefined') {
-		wss.on('connection', connectionHandler(wss));
+		wss.on('connection', hooksConnectionHandler);
 		combinedWssInitialized = true;
 	}
 	return wss;
