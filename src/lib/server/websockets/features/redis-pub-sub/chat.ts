@@ -59,32 +59,39 @@ export class Chat {
 		}
 	}
 
-	private async connect() {
-		const message = JSON.stringify({
-			type: 'connect',
-			stream: this.stream,
-			message: `${this.username} joined`
-		});
-		await this.redisClient.publish(this.stream, message);
-	}
-
-	private async disconnect() {
-		const message = JSON.stringify({
-			type: 'disconnect',
-			stream: this.stream,
-			message: `${this.username} left`
-		});
-		await this.redisClient.publish(this.stream, message);
-	}
-
-	private async receive(message: string) {
+	private async publishMessage({
+		type,
+		message
+	}: {
+		type: 'connect' | 'disconnect' | 'message';
+		message: string;
+	}) {
 		const chatMessage = JSON.stringify({
-			type: 'message',
+			type,
 			stream: this.stream,
 			username: this.username,
 			message
 		});
-		await this.redisClient.lpush(this.stream, chatMessage);
+
+		// Persist messages. This lets us pre-populate the chat on page load
+		// with any messages that happened while this user was away/did not
+		// have an active subscription to this stream
+		if (type === 'message') {
+			await this.redisClient.lpush(this.stream, chatMessage);
+		}
+
 		await this.redisClient.publish(this.stream, chatMessage);
+	}
+
+	private async connect() {
+		await this.publishMessage({ type: 'connect', message: `${this.username} joined` });
+	}
+
+	private async disconnect() {
+		await this.publishMessage({ type: 'disconnect', message: `${this.username} left` });
+	}
+
+	private async receive(message: string) {
+		await this.publishMessage({ type: 'message', message });
 	}
 }

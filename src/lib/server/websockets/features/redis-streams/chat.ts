@@ -77,7 +77,13 @@ export class Chat {
 		return await this.redisClient.xadd(this.stream, '*', 'type', 'message');
 	}
 
-	private async setMessage({ type, message }: { type: string; message: string }) {
+	private async setMessage({
+		type,
+		message
+	}: {
+		type: 'connect' | 'disconnect' | 'message';
+		message: string;
+	}) {
 		const id = await this.addToStream();
 		await this.redisClient.hset(`message:${id}`, {
 			id,
