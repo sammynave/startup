@@ -16,6 +16,9 @@
 - [ ] liveblocks/partkit style collaboration
 - [ ] https://electric-sql.com/docs/intro/local-first
 
+
+[![Maintainability](https://api.codeclimate.com/v1/badges/a8aace40021825ebb5de/maintainability)](https://codeclimate.com/github/sammynave/startup/maintainability)
+
 # Getting started
 
 1. `npx degit sammynave/startup <directory_name>`
