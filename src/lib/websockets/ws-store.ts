@@ -25,17 +25,18 @@ export function wsStore({ url }: { url: string }) {
 
 	return {
 		subscribe(subscription: Subscription) {
-			if (!browser) {
-				return () => undefined;
+			let unsubscribe = () => undefined;
+			if (browser) {
+				ws = ws === null ? open(url, subscriptions) : ws;
+				subscriptions.add(subscription);
+
+				unsubscribe = () => {
+					subscriptions.delete(subscription);
+					ws = close(ws, subscriptions.size);
+				};
 			}
 
-			ws = ws === null ? open(url, subscriptions) : ws;
-			subscriptions.add(subscription);
-
-			return () => {
-				subscriptions.delete(subscription);
-				ws = close(ws, subscriptions.size);
-			};
+			return unsubscribe;
 		},
 
 		// Generic send, can be customized/extended from custom store
