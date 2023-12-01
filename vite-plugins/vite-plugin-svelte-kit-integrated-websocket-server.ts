@@ -7,9 +7,8 @@ import type { Server, WebSocket } from 'ws';
 import type { ViteDevServer, PreviewServerForHook } from 'vite';
 
 export declare class ExtendedWebSocket extends WebSocket {
-	socketId: string;
 	session: Session;
-	channel: string;
+	stream: string;
 }
 
 export type ExtendedWebSocketServer = Server<typeof ExtendedWebSocket>;

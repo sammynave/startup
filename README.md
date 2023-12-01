@@ -98,7 +98,7 @@ Example files that make use of this setup:
 `src/lib/websockets` - this directory contains all of the client side examples for implementing chat and "presence".
 
 - `ws-store.ts` - this is a custom Svelte store that handles setting up the websocket and sending messages to the server
-- `chat-store.ts` - this is a custom Svelte store (with an embedded `derived` store using `ws-store`) to add a listener to `ws-store` to handle receiving chat related messages. it also exports a `send` method for sending messages to the chat channel
+- `chat-store.ts` - this is a custom Svelte store (with an embedded `derived` store using `ws-store`) to add a listener to `ws-store` to handle receiving chat related messages. it also exports a `send` method for sending messages to the chat stream
 - `presence-store.ts` - this is a `derived` store that adds a listener to `ws-store` for `type: 'presence'` messages.
 - `reload-store.ts` - this was useful for debugging/developing these examples - it's also a `derived` store and used for flushing the Redis cache (i.e. deleting all chat messages) and force-reloading all connected clients.
 

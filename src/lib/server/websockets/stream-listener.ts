@@ -2,7 +2,7 @@ import type { Redis } from 'ioredis';
 import { create } from './redis-client';
 
 type Client = {
-	channel: string;
+	stream: string;
 	notify: () => void;
 };
 type Clients = Set<Client>;
@@ -21,7 +21,7 @@ class StreamReader {
 		this.streamArgs = streamArgs;
 	}
 
-	set(clients: Clients, streamArgs: StreamArgs) {
+	update(clients: Clients, streamArgs: StreamArgs) {
 		this.clients = clients;
 		this.streamArgs = streamArgs;
 	}
@@ -38,7 +38,7 @@ class StreamReader {
 				if (results?.length && this.listening) {
 					results.forEach(async ([stream, [[id]]]) => {
 						this.clients.forEach(async (client) => {
-							if (stream === client.channel && this.listening) {
+							if (stream === client.stream && this.listening) {
 								const [streamName] = this.streamArgs.get(client) as [string, string];
 								this.streamArgs.set(client, [streamName, id]);
 								await client.notify();
@@ -122,7 +122,7 @@ class StreamListener {
 
 	addClient(client: Client) {
 		this.clients.add(client);
-		this.streamArgs.set(client, [client.channel, '$']);
+		this.streamArgs.set(client, [client.stream, '$']);
 
 		// ensure we only have one reader
 		if (this.listening === false) {
@@ -130,7 +130,7 @@ class StreamListener {
 			this.reader = new StreamReader(this.clients, this.streamArgs);
 			this.reader.listenForMessages();
 		} else {
-			this.reader?.set(this.clients, this.streamArgs);
+			this.reader?.update(this.clients, this.streamArgs);
 		}
 	}
 
@@ -146,7 +146,7 @@ class StreamListener {
 			// unset reader so GC can clean up
 			this.reader = null;
 		} else {
-			this.reader?.set(this.clients, this.streamArgs);
+			this.reader?.update(this.clients, this.streamArgs);
 		}
 	}
 }

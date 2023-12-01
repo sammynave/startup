@@ -4,72 +4,71 @@ import { WebSocket } from 'ws';
 import type { ExtendedWebSocket } from '../../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.js';
 
 export class Presence {
-	channel: string;
+	private stream: string;
 	private pub: Redis = client();
 	private ws: ExtendedWebSocket;
+	private username: string;
 
-	static async init({ channel, ws }: { channel: string; ws: ExtendedWebSocket }) {
-		const presence = new Presence({ ws, channel });
+	static async init({ stream, ws }: { stream: string; ws: ExtendedWebSocket }) {
+		const presence = new Presence({ ws, stream });
 
-		const sub = create();
-		await sub.subscribe(presence.channel, (err) => {
+		// Once a Redis client calls `subscribe` it no longer responds to any
+		// other commands so a new client is needed
+		const subClient = create();
+		await subClient.subscribe(presence.stream, (err) => {
 			if (err) {
 				console.error('Failed to subscribe: %s', err.message);
 			}
 		});
 
-		const subscription = await sub.on('message', (channel, message) => {
-			if (presence.channel === channel) {
+		const subscription = await subClient.on('message', (stream, message) => {
+			if (presence.stream === stream) {
 				presence.notify(JSON.parse(message));
 			}
 		});
 
 		ws.on('close', async () => {
-			await presence.remove(ws.session.user.username);
+			await presence.removeUser();
 			subscription.unsubscribe();
 		});
 
-		await presence.add(ws.session.user.username);
+		await presence.addUser();
 
 		return presence;
 	}
 
+	private constructor({ stream, ws }: { stream: string; ws: ExtendedWebSocket }) {
+		this.stream = stream;
+		this.ws = ws;
+		this.username = ws.session.user.username;
+	}
+
 	private notify(message: string) {
 		if (this.ws.readyState === WebSocket.OPEN) {
-			this.ws.send(
-				JSON.stringify({
-					type: 'presence',
-					channel: this.channel,
-					message
-				}),
-				{ binary: false }
-			);
+			this.ws.send(JSON.stringify({ type: 'presence', stream: this.stream, message }), {
+				binary: false
+			});
 		}
 	}
 
-	private constructor({ channel, ws }: { channel: string; ws: ExtendedWebSocket }) {
-		this.channel = channel;
-		this.ws = ws;
-	}
-
-	private async add(username: string) {
-		// Insert username at current timestamp in zrange
-		await this.pub.zadd(this.channel, Date.now(), username);
-		this.broadcast();
-	}
-
-	private async remove(username: string) {
-		await this.pub.zrem(this.channel, username);
-		this.broadcast();
+	private async presentUsers() {
+		// return all usernames in zrange sorted by oldest first
+		return await this.pub.zrange(this.stream, -Infinity, +Infinity, 'BYSCORE');
 	}
 
 	private async broadcast() {
 		const presentUsers = await this.presentUsers();
-		await this.pub.publish(this.channel, JSON.stringify(presentUsers));
+		await this.pub.publish(this.stream, JSON.stringify(presentUsers));
 	}
 
-	private async presentUsers() {
-		// return all entries in zrange sorted by oldest first
-		return await this.pub.zrange(this.channel, -Infinity, +Infinity, 'BYSCORE');
+	private async addUser() {
+		// Insert username at current timestamp in zrange
+		await this.pub.zadd(this.stream, Date.now(), this.username);
+		this.broadcast();
+	}
+
+	private async removeUser() {
+		await this.pub.zrem(this.stream, this.username);
+		this.broadcast();
 	}
 }

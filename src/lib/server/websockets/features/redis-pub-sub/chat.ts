@@ -4,8 +4,9 @@ import type { ExtendedWebSocket } from '../../../../../../vite-plugins/vite-plug
 import type { Redis } from 'ioredis';
 
 export class Chat {
-	channel: string;
+	private stream: string;
 	private ws: ExtendedWebSocket;
+	private username: string;
 	private redisClient: Redis = client();
 
 	/*
@@ -14,39 +15,42 @@ export class Chat {
 	 	2. Constructors can not be asynchronous so the only way to encapsulate the setup is through
 		   a static method
 	*/
-	static async init({ ws, channel }: { channel: string; ws: ExtendedWebSocket }) {
-		const chat = new Chat({ ws, channel });
+	static async init({ ws, stream }: { stream: string; ws: ExtendedWebSocket }) {
+		const chat = new Chat({ ws, stream });
 
-		const sub = create();
-		await sub.subscribe(chat.channel, (err) => {
+		// Once a Redis client calls `subscribe` it no longer responds to any
+		// other commands so a new client is needed
+		const subClient = create();
+		await subClient.subscribe(chat.stream, (err) => {
 			if (err) {
 				console.error('Failed to subscribe: %s', err.message);
 			}
 		});
-		const subscription = await sub.on('message', (channel, message) => {
-			if (channel === chat.channel) {
+		const subscription = await subClient.on('message', (stream, message) => {
+			if (stream === chat.stream) {
 				chat.notify(message);
 			}
 		});
 
+		await chat.connect();
+
 		ws.on('message', async (data: string) => {
 			const { message } = JSON.parse(data);
-			await chat.received(message);
+			await chat.receive(message);
 		});
 
 		ws.on('close', async () => {
-			await chat.disconnected();
-			subscription.unsubscribe();
+			await chat.disconnect();
+			await subscription.unsubscribe();
 		});
-
-		await chat.connected();
 
 		return chat;
 	}
 
-	private constructor({ ws, channel }: { ws: ExtendedWebSocket; channel: string }) {
+	private constructor({ ws, stream }: { ws: ExtendedWebSocket; stream: string }) {
+		this.stream = stream;
 		this.ws = ws;
-		this.channel = channel;
+		this.username = ws.session.user.username;
 	}
 
 	private notify(message: string) {
@@ -55,32 +59,32 @@ export class Chat {
 		}
 	}
 
-	private async connected() {
+	private async connect() {
 		const message = JSON.stringify({
 			type: 'connect',
-			channel: this.channel,
-			message: `${this.ws.session.user.username} joined`
+			stream: this.stream,
+			message: `${this.username} joined`
 		});
-		await this.redisClient.publish(this.channel, message);
+		await this.redisClient.publish(this.stream, message);
 	}
 
-	private async disconnected() {
+	private async disconnect() {
 		const message = JSON.stringify({
 			type: 'disconnect',
-			channel: this.channel,
-			message: `${this.ws.session.user.username} left`
+			stream: this.stream,
+			message: `${this.username} left`
 		});
-		await this.redisClient.publish(this.channel, message);
+		await this.redisClient.publish(this.stream, message);
 	}
 
-	private async received(message: string) {
+	private async receive(message: string) {
 		const chatMessage = JSON.stringify({
 			type: 'message',
-			channel: this.channel,
-			username: this.ws.session.user.username,
+			stream: this.stream,
+			username: this.username,
 			message
 		});
-		await this.redisClient.lpush(this.channel, chatMessage);
-		await this.redisClient.publish(this.channel, chatMessage);
+		await this.redisClient.lpush(this.stream, chatMessage);
+		await this.redisClient.publish(this.stream, chatMessage);
 	}
 }

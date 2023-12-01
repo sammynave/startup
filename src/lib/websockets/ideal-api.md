@@ -34,9 +34,9 @@
       - `pub`
         - `open` => publish a `user X joined` message
         - `close` => publish a `user x left` message
-        - `message` => create message, push to channel, publish message recieved event
+        - `message` => create message, push to stream, publish message recieved event
       - `sub`
-        - on `message` published, notifify all the clients subscribed to this channel on this `wss`
+        - on `message` published, notifify all the clients subscribed to this stream on this `wss`
   - Listener (`streams` strategy only)
     - basically manages all of the code needed to support `xread` blocking and reading from multiple streams
     - adding/removing consumers (a.k.a clients like `chat` or `presence`)
@@ -54,14 +54,14 @@
 
 # Client
 
-stream naming convention: `object-type:id:field` (e.x. `channel:123:presence` or `channel:123:chat` or `channel:123:thread:345:chat`)
+stream naming convention: `object-type:id:field` (e.x. `stream:123:presence` or `stream:123:chat` or `stream:123:thread:345:chat`)
 
 ```ts
 // some.svelte file
 const chat = new Chat({strategy: 'streams'})
 const presence = new Presence({ strategy: 'pub-sub'})
 const notifications = new Notifications({strategy: 'pub-sub'})
-const ws = wsStore({ stream: 'channel:123', clients: [chat, presence, notifications] });
+const ws = wsStore({ stream: 'stream:123', clients: [chat, presence, notifications] });
 
 // ... later
 

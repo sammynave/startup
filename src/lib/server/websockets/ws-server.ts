@@ -46,15 +46,7 @@ export class WsServer {
 		if (process.env.WORKER) {
 			return;
 		}
-		const wss = this.setWss(new WebSocketServer({ noServer: true }));
-		wss.on('connection', function pluginWssHandler(ws: ExtendedWebSocket) {
-			ws.socketId = nanoid();
-			console.log(`[wss:pub-sub-global] client connected (${ws.socketId})`);
-
-			ws.on('close', () => {
-				console.log(`[wss:pub-sub-global] client disconnected (${ws.socketId})`);
-			});
-		});
+		this.setWss(new WebSocketServer({ noServer: true }));
 	}
 
 	upgrade(req: IncomingMessage, sock: Duplex, head: Buffer) {

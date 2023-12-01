@@ -3,8 +3,8 @@ import { Presence as PresenceStreams } from './features/redis-streams/presence';
 import { Presence as PresencePubSub } from './features/redis-pub-sub/presence';
 import { Chat as ChatStreams } from './features/redis-streams/chat.js';
 import { Chat as ChatPubSub } from './features/redis-pub-sub/chat.js';
-import { sessionFrom } from './request-utils.js';
 import type { ExtendedWebSocket } from '../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
+import { auth } from '../lucia';
 
 const FEATURE_STRATEGIES = {
 	chat: {
@@ -30,6 +30,12 @@ function getFeatureFor(
 	return FEATURE_STRATEGIES[type][strategy];
 }
 
+async function sessionFrom(request: IncomingMessage) {
+	const sessionId = auth.readSessionCookie(request.headers.cookie);
+	// note: `validateSession()` throws an error if session is invalid
+	return sessionId ? await auth.validateSession(sessionId) : null;
+}
+
 export async function hooksConnectionHandler(ws: ExtendedWebSocket, request: IncomingMessage) {
 	const session = await sessionFrom(request);
 	if (session) {
@@ -43,18 +49,16 @@ export async function hooksConnectionHandler(ws: ExtendedWebSocket, request: Inc
 	const features = url.searchParams.get('features');
 
 	if (features === null) {
-		console.error('NO FEATURES');
-		return;
+		ws.close(1008, 'CLOSING - No features specified');
+		throw new Error('Invalid request - no features specified');
 	}
 
 	JSON.parse(features).forEach(async (feature: Feature) => {
 		if (!feature.stream) {
-			console.log('CLOSING - no stream');
-			ws.close(1008, `No channel specified for ${feature.type}`);
-			return;
+			ws.close(1008, `No stream specified for ${feature.type}`);
+			throw new Error(`Invalid feature ${feature.type} - no stream specified`);
 		}
 
-		const f = getFeatureFor(feature.type, feature.strategy);
-		await f.init({ ws, channel: feature.stream });
+		await getFeatureFor(feature.type, feature.strategy).init({ ws, stream: feature.stream });
 	});
 }

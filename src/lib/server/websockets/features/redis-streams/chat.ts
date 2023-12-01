@@ -5,8 +5,9 @@ import type { ExtendedWebSocket } from '../../../../../../vite-plugins/vite-plug
 import { WebSocket } from 'ws';
 
 export class Chat {
-	channel: string;
+	stream: string;
 	private ws: ExtendedWebSocket;
+	private username: string;
 	private redisClient: Redis = client();
 
 	/*
@@ -15,35 +16,36 @@ export class Chat {
 	 	2. Constructors can not be asynchronous so the only way to encapsulate the setup is through
 		   a static method
 	*/
-	static async init({ ws, channel }: { ws: ExtendedWebSocket; channel: string }) {
-		const chat = new Chat({
-			ws,
-			channel
-		});
-		// Listen for messages from the user of this socket
-		ws.on('message', async (data: string) => await chat.received(JSON.parse(data).message));
-
-		// Let everyone know that this user has left the chat
-		ws.on('close', async () => await chat.disconnected());
-
-		// Let everyone know that this user joined the chat
-		await chat.connected();
+	static async init({ ws, stream }: { ws: ExtendedWebSocket; stream: string }) {
+		const chat = new Chat({ ws, stream });
 
 		// Register this chat instance with the redis stream listener
-		await listener.addClient(chat);
+		listener.addClient(chat);
+
+		// Let everyone know that this user joined the chat
+		await chat.connect();
+
+		// Listen for messages from the user of this socket
+		ws.on('message', async (data: string) => await chat.receive(JSON.parse(data).message));
+
+		// Let everyone know that this user has left the chat
+		ws.on('close', async () => {
+			listener.removeClient(chat);
+			await chat.disconnect();
+		});
 
 		return chat;
 	}
 
 	async notify() {
-		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+		if (this.ws.readyState === WebSocket.OPEN) {
 			const lastSeenId = await this.getLastSeenId();
 
 			// the default behavior is inclusive to the `lastSeenId`, since we've already
 			// seen it, we want to make this range exclusive. we can do that by
 			// prefixing `lastSeenId` with `(`.
 			const beginningId = lastSeenId ? `(${lastSeenId}` : '-';
-			const messages = await this.redisClient.xrange(this.channel, beginningId, '+');
+			const messages = await this.redisClient.xrange(this.stream, beginningId, '+');
 
 			messages.forEach(async ([id, [, type]]) => {
 				const message = await this.redisClient.hgetall(`${type}:${id}`);
@@ -57,27 +59,31 @@ export class Chat {
 		}
 	}
 
-	private constructor({ channel, ws }: { channel: string; ws: ExtendedWebSocket }) {
-		this.channel = channel;
+	private constructor({ stream, ws }: { stream: string; ws: ExtendedWebSocket }) {
+		this.stream = stream;
 		this.ws = ws;
+		this.username = ws.session.user.username;
 	}
 
 	private async getLastSeenId() {
-		return await this.redisClient.hget(`users:${this.ws.session.user.username}`, this.channel);
+		return await this.redisClient.hget(`users:${this.username}`, this.stream);
 	}
 
 	private async setLastSeenId(id: string) {
-		return await this.redisClient.hset(`users:${this.ws.session.user.username}`, this.channel, id);
+		return await this.redisClient.hset(`users:${this.username}`, this.stream, id);
 	}
 
-	private async connected() {
-		const username = this.ws.session.user.username;
-		const id = await this.redisClient.xadd(this.channel, '*', 'type', 'message');
+	private async addToStream() {
+		return await this.redisClient.xadd(this.stream, '*', 'type', 'message');
+	}
+
+	private async connect() {
+		const id = await this.addToStream();
 		await this.redisClient.hset(`message:${id}`, {
 			id,
 			type: 'connect',
-			channel: this.channel,
-			message: `${username} joined`
+			stream: this.stream,
+			message: `${this.username} joined`
 		});
 
 		// Send down any unseen messages that may have happened
@@ -85,26 +91,23 @@ export class Chat {
 		await this.notify();
 	}
 
-	private async disconnected() {
-		const username = this.ws.session.user.username;
-		await listener.removeClient(this);
-		const id = await this.redisClient.xadd(this.channel, '*', 'type', 'message');
+	private async disconnect() {
+		const id = await this.addToStream();
 		await this.redisClient.hset(`message:${id}`, {
 			id,
 			type: 'disconnect',
-			channel: this.channel,
-			message: `${username} left`
+			stream: this.stream,
+			message: `${this.username} left`
 		});
 	}
 
-	private async received(message: string) {
-		// xadd inserts message id into stream
-		const id = await this.redisClient.xadd(this.channel, '*', 'type', 'message');
+	private async receive(message: string) {
+		const id = await this.addToStream();
 		await this.redisClient.hset(`message:${id}`, {
 			id,
 			type: 'message',
-			channel: this.channel,
-			username: this.ws.session.user.username,
+			stream: this.stream,
+			username: this.username,
 			message
 		});
 	}

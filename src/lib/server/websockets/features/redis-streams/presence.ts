@@ -5,40 +5,41 @@ import type { ExtendedWebSocket } from '../../../../../../vite-plugins/vite-plug
 import { WebSocket } from 'ws';
 
 export class Presence {
-	channel: string;
+	stream: string;
 	private redisClient: Redis = client();
 	private ws: ExtendedWebSocket;
+	private username: string;
 
-	static async init({ ws, channel }: { ws: ExtendedWebSocket; channel: string }) {
-		const presence = new Presence({ ws, channel });
-		await listener.addClient(presence);
+	static async init({ ws, stream }: { ws: ExtendedWebSocket; stream: string }) {
+		const presence = new Presence({ ws, stream });
+		listener.addClient(presence);
+		await presence.addUser();
 
 		ws.on('close', async () => {
-			await presence.disconnected();
 			listener.removeClient(presence);
+			await presence.removeUser();
 		});
 
-		await presence.connected();
 		return presence;
 	}
 
 	async notify() {
-		const client = this.ws as ExtendedWebSocket | null;
-		if (client && client.readyState === WebSocket.OPEN) {
+		if (this.ws.readyState === WebSocket.OPEN) {
 			const users = await this.presentUsers();
-			client.send(JSON.stringify({ type: 'presence', message: users, channel: this.channel }));
+			this.ws.send(JSON.stringify({ type: 'presence', message: users, stream: this.stream }));
 		}
 	}
 
-	private constructor({ channel, ws }: { channel: string; ws: ExtendedWebSocket }) {
-		this.channel = channel;
+	private constructor({ stream, ws }: { stream: string; ws: ExtendedWebSocket }) {
+		this.stream = stream;
 		this.ws = ws;
+		this.username = ws.session.user.username;
 	}
 
 	private async presentUsers() {
 		// return all entries in zrange sorted by oldest first
 		const results = await this.redisClient.zrange(
-			`set:${this.channel}`,
+			`set:${this.stream}`,
 			-Infinity,
 			+Infinity,
 			'BYSCORE'
@@ -46,19 +47,19 @@ export class Presence {
 		return results;
 	}
 
-	private async connected() {
+	private async broadcast() {
+		await this.redisClient.xadd(this.stream, '*', 'type', 'presence');
+	}
+
+	private async addUser() {
 		// Insert username at current timestamp in zrange
-		await this.redisClient.zadd(`set:${this.channel}`, Date.now(), this.ws.session.user.username);
+		await this.redisClient.zadd(`set:${this.stream}`, Date.now(), this.username);
 		await this.notify();
 		await this.broadcast();
 	}
 
-	private async disconnected() {
-		await this.redisClient.zrem(`set:${this.channel}`, this.ws.session.user.username);
+	private async removeUser() {
+		await this.redisClient.zrem(`set:${this.stream}`, this.username);
 		await this.broadcast();
-	}
-
-	private async broadcast() {
-		await this.redisClient.xadd(this.channel, '*', 'type', 'presence');
 	}
 }

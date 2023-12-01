@@ -4,6 +4,7 @@
 		"hget",
 		"hgetall",
 		"hset",
+		"lpush",
 		"xadd",
 		"xrange",
 		"xread",
