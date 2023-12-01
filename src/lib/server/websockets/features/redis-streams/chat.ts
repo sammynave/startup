@@ -95,17 +95,17 @@ export class Chat {
 	}
 
 	private async connect() {
-		this.setMessage({ type: 'connect', message: `${this.username} joined` });
+		await this.setMessage({ type: 'connect', message: `${this.username} joined` });
 		// Send down any unseen messages that may have happened
 		// between page load and instantiation
 		await this.notify();
 	}
 
 	private async disconnect() {
-		this.setMessage({ type: 'disconnect', message: `${this.username} left` });
+		await this.setMessage({ type: 'disconnect', message: `${this.username} left` });
 	}
 
 	private async receive(message: string) {
-		this.setMessage({ type: 'message', message });
+		await this.setMessage({ type: 'message', message });
 	}
 }
