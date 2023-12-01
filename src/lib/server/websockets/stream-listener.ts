@@ -34,26 +34,19 @@ class StreamReader {
 
 	async listenForMessages() {
 		for await (const results of this.readStream()) {
-			try {
-				if (results?.length && this.listening) {
-					results.forEach(async ([stream, [[id]]]) => {
-						this.clients.forEach(async (client) => {
-							if (stream === client.stream && this.listening) {
-								const [streamName] = this.streamArgs.get(client) as [string, string];
-								this.streamArgs.set(client, [streamName, id]);
-								await client.notify();
-							}
-						});
-					});
-				}
-
-				if (!this.listening) {
-					break;
-				}
-			} catch (e) {
-				console.log({ e });
+			if (!this.listening) {
 				break;
 			}
+
+			(results ?? []).forEach(async ([stream, [[id]]]) => {
+				this.clients.forEach(async (client) => {
+					if (stream === client.stream && this.listening) {
+						const [streamName] = this.streamArgs.get(client) as [string, string];
+						this.streamArgs.set(client, [streamName, id]);
+						await client.notify();
+					}
+				});
+			});
 		}
 	}
 
@@ -99,17 +92,8 @@ class StreamReader {
 	}
 
 	private *readStream() {
-		while (true) {
-			if (this.listening) {
-				try {
-					yield this.redisClient.xread('BLOCK', 3000, 'STREAMS', ...this.buildStreamIds());
-				} catch (err) {
-					console.error(err);
-					break;
-				}
-			} else {
-				return;
-			}
+		while (this.listening) {
+			yield this.redisClient.xread('BLOCK', 3000, 'STREAMS', ...this.buildStreamIds());
 		}
 	}
 }
