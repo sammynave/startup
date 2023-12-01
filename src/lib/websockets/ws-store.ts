@@ -9,6 +9,15 @@ function open(url: string, subscriptions: Set<Subscription>) {
 	return ws;
 }
 
+function close(ws: WebSocket | null, subscriptionsSize: number) {
+	if (subscriptionsSize === 0 && ws !== null) {
+		ws.close();
+		return null;
+	} else {
+		return ws;
+	}
+}
+
 export function wsStore({ url }: { url: string }) {
 	const subscriptions = new Set<Subscription>();
 
@@ -25,10 +34,7 @@ export function wsStore({ url }: { url: string }) {
 
 			return () => {
 				subscriptions.delete(subscription);
-				if (subscriptions.size === 0 && ws !== null) {
-					ws.close();
-					ws = null;
-				}
+				ws = close(ws, subscriptions.size);
 			};
 		},
 
