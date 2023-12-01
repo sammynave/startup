@@ -65,6 +65,13 @@ export async function signUp({
 	});
 }
 
+async function usernameFor(userId: string) {
+	return await db.query.users.findFirst({
+		where: eq(users.id, userId),
+		columns: { username: true }
+	});
+}
+
 export async function changeUsername({
 	userId,
 	newUsername
@@ -73,10 +80,7 @@ export async function changeUsername({
 	newUsername: string;
 }) {
 	return await db.transaction(async () => {
-		const user = await db.query.users.findFirst({
-			where: eq(users.id, userId),
-			columns: { username: true }
-		});
+		const user = await usernameFor(userId);
 
 		if (!user?.username) {
 			throw 'No user found';
@@ -112,19 +116,14 @@ export async function changePassword({
 	newPassword: string;
 }) {
 	return await db.transaction(async () => {
-		const results = await db.query.users.findFirst({
-			where: eq(users.id, userId),
-			columns: {
-				username: true
-			}
-		});
+		const user = await usernameFor(userId);
 
-		if (!results) {
+		if (!user?.username) {
 			throw 'Can not find user';
 		}
 
-		await auth.useKey('username', results.username.toLowerCase(), oldPassword);
-		await auth.updateKeyPassword('username', results.username.toLowerCase(), newPassword);
+		await auth.useKey('username', user.username.toLowerCase(), oldPassword);
+		await auth.updateKeyPassword('username', user.username.toLowerCase(), newPassword);
 		await auth.invalidateAllUserSessions(userId);
 		return await auth.createSession({
 			userId,

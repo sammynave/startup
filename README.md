@@ -9,6 +9,7 @@
 - [ ] sendgrid
 - [ ] payment (stripe?)
 - [ ] CLI/install script to choose which examples/config you want
+- [x] code climate
 
 # TODO someday
 - [ ] CRDT + offline first + absurdSQL
