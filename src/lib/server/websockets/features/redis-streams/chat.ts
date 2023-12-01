@@ -77,38 +77,29 @@ export class Chat {
 		return await this.redisClient.xadd(this.stream, '*', 'type', 'message');
 	}
 
-	private async connect() {
+	private async setMessage({ type, message }: { type: string; message: string }) {
 		const id = await this.addToStream();
 		await this.redisClient.hset(`message:${id}`, {
 			id,
-			type: 'connect',
+			type,
 			stream: this.stream,
-			message: `${this.username} joined`
+			username: this.username,
+			message
 		});
+	}
 
+	private async connect() {
+		this.setMessage({ type: 'connect', message: `${this.username} joined` });
 		// Send down any unseen messages that may have happened
 		// between page load and instantiation
 		await this.notify();
 	}
 
 	private async disconnect() {
-		const id = await this.addToStream();
-		await this.redisClient.hset(`message:${id}`, {
-			id,
-			type: 'disconnect',
-			stream: this.stream,
-			message: `${this.username} left`
-		});
+		this.setMessage({ type: 'disconnect', message: `${this.username} left` });
 	}
 
 	private async receive(message: string) {
-		const id = await this.addToStream();
-		await this.redisClient.hset(`message:${id}`, {
-			id,
-			type: 'message',
-			stream: this.stream,
-			username: this.username,
-			message
-		});
+		this.setMessage({ type: 'message', message });
 	}
 }

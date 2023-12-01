@@ -59,12 +59,12 @@
 	<Card.Content class="flex flex-col-reverse overflow-y-auto max-h-[50vh] p-4">
 		<ul class="flex flex-col">
 			{#each $chat as message}
-				{#if message?.username === data.username}
-					<li class="bg-slate-200 self-end p-2 mb-2">{message.message}</li>
-				{:else if message?.username}
-					<li class="p-2 mb-2">{message.username}: {message.message}</li>
-				{:else}
+				{#if message.type !== 'message'}
 					<li class="bg-green-200 p-2 mb-2">{message.message}</li>
+				{:else if message.username === data.username}
+					<li class="bg-slate-200 self-end p-2 mb-2">{message.message}</li>
+				{:else}
+					<li class="p-2 mb-2">{message.username}: {message.message}</li>
 				{/if}
 			{:else}
 				No messages
