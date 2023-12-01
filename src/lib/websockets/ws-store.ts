@@ -12,10 +12,9 @@ function open(url: string, subscriptions: Set<Subscription>) {
 function close(ws: WebSocket | null, subscriptionsSize: number) {
 	if (subscriptionsSize === 0 && ws !== null) {
 		ws.close();
-		return null;
-	} else {
-		return ws;
+		ws = null;
 	}
+	return ws;
 }
 
 export function wsStore({ url }: { url: string }) {
