@@ -88,33 +88,37 @@ const ws = wsStore({ stream: 'stream:123', clients: [chat, presence, notificatio
 export function wsStore({ clients }) {
 	const { protocol, host } = $page.url;
 	const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${wsProtocol}//${host}/ws?clients=${clients.map(({name, strategy, stream}) => ({ name, strategy, stream }))}`
+	const url = `${wsProtocol}//${host}/ws?clients=${clients.map(({ name, strategy, stream }) => ({
+		name,
+		strategy,
+		stream
+	}))}`;
 
-  // ...
+	// ...
 
-  const api = {
-    subscribe(subscription: Subscription) {
-      // ...
-    },
-    send(message: string, type: string) {
-      // ..
-    },
-  }
-  clients.forEach((client) => {
-    client.listen(ws)
-    api[client.name] = client.api
-  })
+	const api = {
+		subscribe(subscription: Subscription) {
+			// ...
+		},
+		send(message: string, type: string) {
+			// ..
+		}
+	};
+	clients.forEach((client) => {
+		client.listen(ws);
+		api[client.name] = client.api;
+	});
 
-  return api;
+	return api;
 }
 ```
 
 ```ts
 // ws-features/chat.ts
 class Chat {
-  constructor({ strategy }) {
-    this.strategy = strategy;
-  }
+	constructor({ strategy }) {
+		this.strategy = strategy;
+	}
 }
 ```
 
@@ -130,21 +134,20 @@ export const connectionHandler =
 			return;
 		}
 
-    // check session is valid here
+		// check session is valid here
 
+		// Register plugins
+		clients.forEach(({ name, stream, strategy = 'pub-sub' }) => {
+			if (!strategy) {
+				console.warn(`No strategy specified for client ${name}. Defaulting to pub-sub`);
+			}
 
-    // Register plugins
-    clients.forEach(({name, stream, strategy = 'pub-sub'}) => {
-      if (!strategy) {
-        console.warn(`No strategy specified for client ${name}. Defaulting to pub-sub`)
-      }
+			if (!stream) {
+				console.error(`Can not initialize client ${name}, no stream specified.`);
+				continue;
+			}
 
-      if (!stream) {
-        console.error(`Can not initialize client ${name}, no stream specified.`)
-        continue;
-      }
-
-      Handlers[name].init({ stream, strategy, ws, wss})
-    })
-}
+			Handlers[name].init({ stream, strategy, ws, wss });
+		});
+	};
 ```

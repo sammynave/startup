@@ -1,4 +1,5 @@
 <script lang="ts">
+	// @ts-expect-error waiting for lib to be updated
 	import { createTable, Render, Subscribe } from 'svelte-headless-table';
 	import { readable } from 'svelte/store';
 	import * as Table from '$lib/components/ui/table';
@@ -14,7 +15,7 @@
 		table.column({
 			accessor: 'createdAt',
 			header: 'Created at',
-			cell: ({ value }) => {
+			cell: ({ value }: { value: number }) => {
 				return new Date(value).toLocaleDateString('en-us', {
 					weekday: 'long',
 					year: 'numeric',
@@ -27,7 +28,7 @@
 		table.column({
 			accessor: 'updatedAt',
 			header: 'Updated at',
-			cell: ({ value }) => {
+			cell: ({ value }: { value: number }) => {
 				return new Date(value).toLocaleDateString('en-us', {
 					weekday: 'long',
 					year: 'numeric',

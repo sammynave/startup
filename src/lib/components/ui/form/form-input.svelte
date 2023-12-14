@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { getFormField } from "formsnap";
-	import type { HTMLInputAttributes } from "svelte/elements";
-	import { Input, type InputEvents } from "$lib/components/ui/input";
+	import { getFormField } from 'formsnap';
+	import type { HTMLInputAttributes } from 'svelte/elements';
+	import { Input, type InputEvents } from '$lib/components/ui/input';
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	type $$Props = HTMLInputAttributes;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	type $$Events = InputEvents;
 
 	const { attrStore, value } = getFormField();
