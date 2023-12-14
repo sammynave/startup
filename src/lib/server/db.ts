@@ -1,7 +1,11 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { DATABASE_URL } from '$env/static/private';
 import * as schema from './db/schema.js';
 
-export const client = postgres(DATABASE_URL);
+// Need to use this because $env fails in playwright
+import 'dotenv/config';
+
+const databaseUrl = process.env.DATABASE_URL;
+
+export const client = postgres(databaseUrl);
 export const db = drizzle(client, { schema });

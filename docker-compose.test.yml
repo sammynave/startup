@@ -1,0 +1,38 @@
+version: '3.1'
+
+services:
+  db-testing:
+    image: postgres:latest
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data-testing:/var/lib/postgresql/data
+    env_file:
+      - .env.testing
+  jobs-testing:
+    image: contribsys/faktory:latest
+    command: ./faktory -b :7419 -w :7420 -l debug
+    env_file:
+      - .env.testing
+    ports:
+      - '7419:7419'
+      - '7420:7420'
+  websocket-kv-testing:
+    image: redis:alpine
+    command: redis-server --save 20 1 --loglevel warning --requirepass test-password
+    # no idea why this isn't working when using .env.testing
+    # command: redis-server --save 20 1 --loglevel warning --requirepass $REDIS_WS_PASSWORD
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - websocket-kv-testing:/data
+    env_file:
+      - .env.testing
+
+# create local volume for postgres data to persist through computer restarts
+volumes:
+  postgres-data-testing:
+    driver: local
+  websocket-kv-testing:
+    driver: local
