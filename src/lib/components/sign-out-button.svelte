@@ -7,6 +7,10 @@
 </script>
 
 <form class="flex {className}" method="post" action="/app?/sign-out" use:enhance>
-	<Button class="w-full justify-start hover:underline" variant="link" type="submit">Sign out</Button
+	<Button
+		data-testid="sign-out"
+		class="w-full justify-start hover:underline"
+		variant="link"
+		type="submit">Sign out</Button
 	>
 </form>
