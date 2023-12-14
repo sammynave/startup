@@ -1,8 +1,8 @@
 import Redis from 'ioredis';
-import { REDIS_WS_SERVER } from '$env/static/private';
+// Need to use this because $env fails in playwright
 import 'dotenv/config';
 
-const connectionString = REDIS_WS_SERVER;
+const connectionString = process.env.REDIS_WS_SERVER;
 
 let cli: Redis | null = null;
 export const create = () => new Redis(connectionString);

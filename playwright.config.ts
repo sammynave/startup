@@ -51,7 +51,7 @@ const config: PlaywrightTestConfig = {
 		command: 'pnpm run dev --mode testing',
 		port: 5173,
 		stdout: 'pipe',
-		reuseExistingServer: true
+		reuseExistingServer: false
 	},
 	testDir: 'tests',
 	testMatch: /(.+\.)?(test|spec)\.[jt]s/

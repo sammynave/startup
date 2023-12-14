@@ -57,11 +57,13 @@
 					</Sheet.Close>
 					<Sheet.Close asChild let:builder>
 						<Button
+							data-testid="websocket-link"
 							builders={[builder]}
-							class={(routeId === '/app/websocket-example/combined' ? 'underline ' : ' ') +
-								'w-full justify-start'}
+							class={(routeId === '/app/websocket-example/combine-using-pub-sub'
+								? 'underline '
+								: ' ') + 'w-full justify-start'}
 							variant="link"
-							href="/app/websocket-example/combined">Websocket examples</Button
+							href="/app/websocket-example/using-pub-sub">Websocket examples</Button
 						>
 					</Sheet.Close>
 					<Sheet.Close asChild let:builder>
@@ -94,6 +96,7 @@
 		>
 
 		<Button
+			data-testid="websocket-link"
 			class={routeId === '/app/websocket-example/using-pub-sub' ? 'underline' : ''}
 			variant="link"
 			href="/app/websocket-example/using-pub-sub">Websocket examples</Button

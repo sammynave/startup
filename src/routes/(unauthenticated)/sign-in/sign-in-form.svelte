@@ -35,7 +35,7 @@
 			<Form.Item>
 				<Form.Field {config} name="username">
 					<Form.Label>Username</Form.Label>
-					<Form.Input />
+					<Form.Input data-testid="username" />
 					<Form.Validation />
 				</Form.Field>
 			</Form.Item>
@@ -51,13 +51,13 @@
 							>{showPassword ? 'hide' : 'show'}</Form.Button
 						>
 					</Form.Label>
-					<Form.Input type={showPassword ? 'text' : 'password'} />
+					<Form.Input data-testid="password" type={showPassword ? 'text' : 'password'} />
 					<Form.Validation />
 				</Form.Field>
 			</Form.Item>
 		</Card.Content>
 		<Card.Footer>
-			<Form.Button type="submit" disabled={submitting}>Sign in</Form.Button>
+			<Form.Button data-testid="sign-in-submit" type="submit" disabled={submitting}>Sign in</Form.Button>
 		</Card.Footer>
 	</Card.Root>
 </Form.Root>

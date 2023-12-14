@@ -60,11 +60,15 @@
 		<ul class="flex flex-col">
 			{#each $chat as message}
 				{#if message.type !== 'message'}
-					<li class="bg-green-200 p-2 mb-2">{message.message}</li>
+					<li data-testid="joined" class="bg-green-200 p-2 mb-2">{message.message}</li>
 				{:else if message.username === data.username}
-					<li class="bg-slate-200 self-end p-2 mb-2">{message.message}</li>
+					<li data-testid="message-from-me" class="bg-slate-200 self-end p-2 mb-2">
+						{message.message}
+					</li>
 				{:else}
-					<li class="p-2 mb-2">{message.username}: {message.message}</li>
+					<li data-testid="message-from-other" class="p-2 mb-2">
+						{message.username}: {message.message}
+					</li>
 				{/if}
 			{:else}
 				No messages
@@ -75,8 +79,15 @@
 	<Card.Footer class="pt-4">
 		<form on:submit={send} class="w-full">
 			<Label for="message">message</Label>
-			<Input class="mt-2" id="message" name="message" type="text" bind:value={message} />
-			<Button class="mt-2" type="submit" disabled={sending}>Send</Button>
+			<Input
+				data-testid="chat-input"
+				class="mt-2"
+				id="message"
+				name="message"
+				type="text"
+				bind:value={message}
+			/>
+			<Button data-testid="chat-submit" class="mt-2" type="submit" disabled={sending}>Send</Button>
 		</form>
 		<!-- need to reference the reload store. otherwise the compiler removes it -->
 		<span class="hidden">{$reload}</span>
