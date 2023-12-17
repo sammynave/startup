@@ -6,11 +6,13 @@
 	import Label from '$lib/components/ui/label/label.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { chatStore } from '$lib/websockets/chat-store.js';
-	import { COMBINED_PATH } from '$lib/websockets/constants.js';
 	import { presenceStore } from '$lib/websockets/presence-store.js';
 	import { reloadStore } from '$lib/websockets/reload-store.js';
 	import { wsStore } from '$lib/websockets/ws-store.js';
-	import type { FormEvent } from 'formsnap/dist/internal';
+
+	type FormEvent = Event & {
+		currentTarget: HTMLFormElement;
+	};
 
 	export let data;
 

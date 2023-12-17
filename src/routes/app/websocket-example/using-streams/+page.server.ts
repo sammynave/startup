@@ -12,7 +12,7 @@ const presenceStream = 'presence:streams:streams-chat';
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const session = await locals.auth.validate();
 	if (!session) {
-		throw redirect(302, '/sign-up');
+		redirect(302, '/sign-up');
 	}
 
 	const { username } = locals.user;

@@ -21,22 +21,22 @@ function isAdmin(session: Session) {
 async function handleAuth({ event, session }: { event: RequestEvent; session: Session | null }) {
 	if (event.url.pathname.startsWith('/app')) {
 		if (!session) {
-			throw redirect(302, '/sign-in');
+			redirect(302, '/sign-in');
 		}
 
 		if (event.url.pathname.startsWith('/app/admin') && !isAdmin(session)) {
-			throw redirect(302, '/app');
+			redirect(302, '/app');
 		}
 		event.locals.user = session.user;
 	} else if (event.route.id?.includes('/(unauthenticated)')) {
 		if (session) {
-			throw redirect(302, '/app');
+			redirect(302, '/app');
 		}
 	} else if (event.route.id === '/') {
 		if (session) {
-			throw redirect(302, '/app');
+			redirect(302, '/app');
 		} else {
-			throw redirect(302, '/sign-up');
+			redirect(302, '/sign-up');
 		}
 	}
 }
@@ -52,7 +52,7 @@ function startupCombinedWebsocketServer(wss: ExtendedWebSocketServer) {
 	// other wise we never clean them up when HMR reloads
 	if (dev) {
 		if (combinedWssInitialized === false && typeof wss !== 'undefined') {
-			wss.listeners('connection').forEach((listener) => {
+			wss.listeners('connection').forEach((listener: ExtendedWebSocketServer['listeners']) => {
 				if (listener.name === 'hooksConnectionHandler') {
 					wss.removeListener('connection', listener as (...args: unknown[]) => void);
 					const openClients = [...wss.clients].filter(
@@ -75,7 +75,7 @@ function startupCombinedWebsocketServer(wss: ExtendedWebSocketServer) {
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
-	event.locals.auth = auth.handleRequest(event);
+	event.locals.auth = auth.handleRequest(event as typeof auth.handleRequest.arguments);
 	const session = await event.locals.auth.validate();
 
 	await handleAuth({ event, session });

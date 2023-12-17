@@ -57,7 +57,9 @@
 			</Form.Item>
 		</Card.Content>
 		<Card.Footer>
-			<Form.Button data-testid="sign-in-submit" type="submit" disabled={submitting}>Sign in</Form.Button>
+			<Form.Button data-testid="sign-in-submit" type="submit" disabled={submitting}
+				>Sign in</Form.Button
+			>
 		</Card.Footer>
 	</Card.Root>
 </Form.Root>

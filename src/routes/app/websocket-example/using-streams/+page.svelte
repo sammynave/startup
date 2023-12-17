@@ -9,7 +9,10 @@
 	import { presenceStore } from '$lib/websockets/presence-store.js';
 	import { reloadStore } from '$lib/websockets/reload-store.js';
 	import { wsStore } from '$lib/websockets/ws-store.js';
-	import type { FormEvent } from 'formsnap/dist/internal';
+
+	type FormEvent = Event & {
+		currentTarget: HTMLFormElement;
+	};
 
 	export let data;
 

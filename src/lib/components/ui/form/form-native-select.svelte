@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { Form as FormPrimitive } from "formsnap";
-	import { buttonVariants } from "$lib/components/ui/button";
-	import { cn } from "$lib/utils";
-	import { ChevronDown } from "lucide-svelte";
-	import type { HTMLSelectAttributes } from "svelte/elements";
+	import { Form as FormPrimitive } from 'formsnap';
+	import { buttonVariants } from '$lib/components/ui/button';
+	import { cn } from '$lib/utils';
+	import { ChevronDown } from 'lucide-svelte';
+	import type { HTMLSelectAttributes } from 'svelte/elements';
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	type $$Props = HTMLSelectAttributes;
 
 	let className: string | undefined | null = undefined;
@@ -13,8 +14,8 @@
 
 <FormPrimitive.Select
 	class={cn(
-		buttonVariants({ variant: "outline" }),
-		"appearance-none bg-transparent font-normal",
+		buttonVariants({ variant: 'outline' }),
+		'appearance-none bg-transparent font-normal',
 		className
 	)}
 	{...$$restProps}

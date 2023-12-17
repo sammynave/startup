@@ -3,8 +3,9 @@ import type { Duplex } from 'stream';
 import { WsServer } from '../src/lib/server/websockets/ws-server';
 import { COMBINED_PATH } from '../src/lib/websockets/constants';
 import type { Session } from 'lucia';
-import type { Server, WebSocket } from 'ws';
-import type { ViteDevServer, PreviewServerForHook } from 'vite';
+// @ts-expect-error waiting for lib to be updated
+import type { WebSocket, Server } from 'ws';
+import type { ViteDevServer, PreviewServer } from 'vite';
 
 export declare class ExtendedWebSocket extends WebSocket {
 	session: Session;
@@ -31,7 +32,7 @@ export function integratedWebsocketServer() {
 			createWSSGlobalInstances();
 			server.httpServer?.on('upgrade', onHttpServerUpgrade);
 		},
-		configurePreviewServer(server: PreviewServerForHook) {
+		configurePreviewServer(server: PreviewServer) {
 			createWSSGlobalInstances();
 			server.httpServer?.on('upgrade', onHttpServerUpgrade);
 		}

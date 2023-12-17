@@ -12,10 +12,10 @@
 - [x] code climate
 
 # TODO someday
+
 - [ ] CRDT + offline first + absurdSQL
 - [ ] liveblocks/partkit style collaboration
 - [ ] https://electric-sql.com/docs/intro/local-first
-
 
 [![Maintainability](https://api.codeclimate.com/v1/badges/a8aace40021825ebb5de/maintainability)](https://codeclimate.com/github/sammynave/startup/maintainability)
 
@@ -75,6 +75,17 @@ You'll also need to create an `Env Group` to store the env `PUBLIC_FAKTORY_URL` 
 
 See the [Render docs](https://render.com/docs/blueprint-spec) for more info
 
+# Testing
+
+## E2E with Playwright
+
+[Colima + testcontianers work around](https://node.testcontainers.org/supported-container-runtimes/)
+
+```bash
+export DOCKER_HOST=unix://${HOME}/.colima/default/docker.sock
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+```
+
 # Integrated websockets server(s)
 
 TODO - rewrite this
@@ -83,11 +94,11 @@ This repo contains two examples (`/src/routes/app/websocket-example/using-pub-su
 
 Key files:
 
--  `prod-server.ts` - this is how you'll start your prod server (see `render.yaml`)
--  `vite.config.ts` - here we create a small plugin to insert the websocket server at `/websocket` path for the dev and preview servers (`configureServer` and `configurePreviewServer`)
--  `vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.ts` - this file contains the functions that create the server (`createWSSGlobalInstance`) and host it (`onHttpServerUpgrade`) referenced in the step above. This technique relies on attaching the websocket server to the global state.
--  `ws-server.ts` This file also has utility functions to help out when getting and setting the websocket server: `getStreamWss/getPubSubWss` and `setStreamsWss/setPubSubWss`
--  `src/hooks.server.ts` - this file initializes our websocket servers and adds a reference to it to `locals`. this way we can trigger events from other places in our Svelte server, for example, the default action in `src/routes/app/websocket-example/using-streams/+page.server.ts`. Here we're grabbing the server (`sWss`) off of the `event.locals` object and then triggering a reload for all of our connected clients.
+- `prod-server.ts` - this is how you'll start your prod server (see `render.yaml`)
+- `vite.config.ts` - here we create a small plugin to insert the websocket server at `/websocket` path for the dev and preview servers (`configureServer` and `configurePreviewServer`)
+- `vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server.ts` - this file contains the functions that create the server (`createWSSGlobalInstance`) and host it (`onHttpServerUpgrade`) referenced in the step above. This technique relies on attaching the websocket server to the global state.
+- `ws-server.ts` This file also has utility functions to help out when getting and setting the websocket server: `getStreamWss/getPubSubWss` and `setStreamsWss/setPubSubWss`
+- `src/hooks.server.ts` - this file initializes our websocket servers and adds a reference to it to `locals`. this way we can trigger events from other places in our Svelte server, for example, the default action in `src/routes/app/websocket-example/using-streams/+page.server.ts`. Here we're grabbing the server (`sWss`) off of the `event.locals` object and then triggering a reload for all of our connected clients.
 
 Example files that make use of this setup:
 
