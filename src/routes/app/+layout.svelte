@@ -68,6 +68,16 @@
 					</Sheet.Close>
 					<Sheet.Close asChild let:builder>
 						<Button
+							data-testid="offline-link"
+							builders={[builder]}
+							class={(routeId === '/app/offline-first' ? 'underline ' : ' ') +
+								'w-full justify-start'}
+							variant="link"
+							href="/app/offline-first">Offline first</Button
+						>
+					</Sheet.Close>
+					<Sheet.Close asChild let:builder>
+						<Button
 							builders={[builder]}
 							class={(routeId === '/app/settings' ? 'underline ' : ' ') + 'w-full justify-start'}
 							variant="link"
@@ -100,6 +110,13 @@
 			class={routeId === '/app/websocket-example/using-pub-sub' ? 'underline' : ''}
 			variant="link"
 			href="/app/websocket-example/using-pub-sub">Websocket examples</Button
+		>
+
+		<Button
+			data-testid="offline-link"
+			class={routeId === '/app/offline-first' ? 'underline' : ''}
+			variant="link"
+			href="/app/offline-first">Offline first</Button
 		>
 
 		<Button
