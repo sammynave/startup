@@ -10,3 +10,5 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 test-results
+sync-dbs/**.*
+!sync-dbs/.keep
