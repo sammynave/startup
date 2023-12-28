@@ -38,8 +38,8 @@ export class Sync {
 		clientSiteId: string;
 		clientVersion: number;
 	}) {
-		const db = await dbFrom(`${ws.session.user.userId}.db`);
-		const { siteId, version } = await db
+		const db = dbFrom(`${ws.session.user.userId}.db`);
+		const { siteId, version } = db
 			.prepare('SELECT hex(crsql_site_id()) as siteId, crsql_db_version() as version;')
 			.get();
 		const sync = new Sync({ ws, stream, db, version, siteId, clientSiteId });
@@ -66,21 +66,19 @@ export class Sync {
 					1. client inserts a new entry and sends an update
 					2. client receives a message of `type: 'connected'`, then it sends up all changes
 				*/
-				changes.forEach(async (change, i) => {
-					await db.prepare(INSERT_CHANGES).run(...change);
+				changes.forEach((change, i) => {
+					db.prepare(INSERT_CHANGES).run(...change);
 				});
 
 				const changeSiteVersions = latestVersions(changes);
 
-				changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
-					await db
-						.prepare(
-							`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+				changeSiteVersions.forEach(([changeSiteId, changeDbVersion]) => {
+					db.prepare(
+						`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
 				    VALUES (unhex(?), ?, 0, 0)
 				    ON CONFLICT([site_id], [tag], [event])
 				    DO UPDATE SET version=excluded.version`
-						)
-						.run(changeSiteId, changeDbVersion);
+					).run(changeSiteId, changeDbVersion);
 				});
 
 				await sync.receive(data);
@@ -122,27 +120,27 @@ export class Sync {
 		this.clientSiteId = clientSiteId;
 	}
 
-	async catchUpServer(clientSiteId) {
+	catchUpServer(clientSiteId) {
 		// Here we can send down the last seen id or something.
 		// that way we don't need the entire contents of the db
 
-		const result = await this.db
+		const result = this.db
 			.prepare(`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`)
 			.get(clientSiteId);
 		const version = result?.version ?? 0;
-		await this.notify(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
+		this.notify(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
 	}
 
-	async catchUpClient(clientSiteId: string) {
+	catchUpClient(clientSiteId: string) {
 		// Maybe we can do something to only send down what's needed.
 		// just updates after the last update by `${clientSiteId}
 
-		const result = await this.db
+		const result = this.db
 			.prepare(`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`)
 			.get(clientSiteId);
 		const lastVersion = result?.version ?? 0;
 
-		const changes = await this.db
+		const changes = this.db
 			.prepare(
 				`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
 				FROM crsql_changes WHERE site_id != unhex(:clientSiteId)
@@ -155,8 +153,8 @@ export class Sync {
 
 		const changeSiteVersions = latestVersions(changes.map((change) => Object.values(change)));
 
-		changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
-			await this.db
+		changeSiteVersions.forEach(([changeSiteId, changeDbVersion]) => {
+			this.db
 				.prepare(
 					`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
 				    VALUES (unhex(?), ?, 0, 0)
