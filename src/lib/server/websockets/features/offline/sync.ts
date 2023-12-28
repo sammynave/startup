@@ -90,8 +90,8 @@ export class Sync {
 		});
 
 		// Make sure this happens AFTER event handlers are declared
-		await sync.catchUpClient(clientSiteId);
-		await sync.catchUpServer(clientSiteId);
+		sync.catchUpClient(clientSiteId);
+		sync.catchUpServer(clientSiteId);
 
 		return sync;
 	}
@@ -171,7 +171,7 @@ export class Sync {
 				version: this.version,
 				changes: changes.map((change) => Object.values(change))
 			});
-			await this.notify(message);
+			this.notify(message);
 		}
 	}
 
