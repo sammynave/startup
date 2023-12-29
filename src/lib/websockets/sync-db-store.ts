@@ -118,8 +118,10 @@ export function db({ schema, name, wsUrl }) {
 		// No SSR for now.
 		return { store: () => readable([]) };
 	}
+
 	const databasePromise = Database.load({ schema, name });
 	const wsPromise = setupWs({ url: wsUrl, database: databasePromise });
+
 	const store = ({ query, commands }) => {
 		const q = writable([]);
 		databasePromise.then(async (database) => {
