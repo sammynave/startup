@@ -1,0 +1,147 @@
+<script lang="ts">
+	import { nanoid } from 'nanoid/non-secure';
+	import { db } from '../../../lib/websockets/sync-db-store.js';
+	import Input from '$lib/components/ui/input/input.svelte';
+
+	export let data;
+
+	let newTodo = '';
+	let newTodont = '';
+	let siteId = '';
+	let version = '';
+	let peers = {};
+
+	// import this from somewhere
+	const schema = [
+		`CREATE TABLE IF NOT EXISTS todos (id PRIMARY KEY NOT NULL, content, complete);`,
+		`SELECT crsql_as_crr('todos');`,
+		`CREATE TABLE IF NOT EXISTS todonts (id PRIMARY KEY NOT NULL, content, complete);`,
+		`SELECT crsql_as_crr('todonts');`
+	];
+
+	const { store } = db({ schema, name: data.dbName, wsUrl: data.url });
+	const todos = store({
+		query: async (db) => {
+			const q = await db.execO('SELECT * FROM todos');
+			const [x] = await db.exec(`SELECT crsql_db_version();`);
+			version = x[0];
+			const [y] = await db.exec(`SELECT hex(crsql_site_id());`);
+			siteId = y[0];
+			peers = await db.execO(`SELECT hex(site_id), version FROM crsql_tracked_peers`);
+			return q;
+		},
+		commands: {
+			insert: async (db, name) =>
+				await db.exec('INSERT INTO todos VALUES (?, ?, ?)', [nanoid(), name, 0]),
+			toggle: async (db, id) =>
+				await db.exec('UPDATE todos SET complete = not(complete) WHERE id = ?', [id]),
+			delete: async (db, id) => await db.exec('DELETE FROM todos WHERE id = ?', [id])
+		}
+	});
+	const todonts = store({
+		query: async (db) => {
+			const q = await db.execO('SELECT * FROM todonts');
+			const [x] = await db.exec(`SELECT crsql_db_version();`);
+			version = x[0];
+			const [y] = await db.exec(`SELECT hex(crsql_site_id());`);
+			siteId = y[0];
+			peers = await db.execO(`SELECT hex(site_id), version FROM crsql_tracked_peers`);
+
+			return q;
+		},
+		commands: {
+			insert: async (db, name) =>
+				await db.exec('INSERT INTO todonts VALUES (?, ?, ?)', [nanoid(), name, 0]),
+			toggle: async (db, id) =>
+				await db.exec('UPDATE todonts SET complete = not(complete) WHERE id = ?', [id]),
+			delete: async (db, id) => await db.exec('DELETE FROM todonts WHERE id = ?', [id])
+		}
+	});
+</script>
+
+<h1>{siteId} {version}</h1>
+<div>{JSON.stringify(peers)}</div>
+<div class="flex gap-10">
+	<div>
+		<p>todos</p>
+		<form
+			on:submit|preventDefault={async () => {
+				await todos.insert(newTodo);
+				newTodo = '';
+			}}
+		>
+			<label>new todo<Input type="text" bind:value={newTodo} /></label>
+			<button type="submit">create</button>
+		</form>
+
+		{#each $todos as todo}
+			<div>
+				<input type="checkbox" checked={todo.complete} on:click={() => todos.toggle(todo.id)} />
+				{todo.id}
+				{todo.content}
+				<button on:click|preventDefault={() => todos.delete(todo.id)}>delete</button>
+			</div>
+		{/each}
+	</div>
+
+	<div>
+		<p>todonts</p>
+		<form
+			on:submit|preventDefault={async () => {
+				await todonts.insert(newTodont);
+				newTodont = '';
+			}}
+		>
+			<label>new todont<Input type="text" bind:value={newTodont} /></label>
+			<button type="submit">create</button>
+		</form>
+
+		{#each $todonts as todont}
+			<div>
+				<input
+					type="checkbox"
+					checked={todont.complete}
+					on:click={() => todonts.toggle(todont.id)}
+				/>
+				{todont.id}
+				{todont.content}
+				<button on:click|preventDefault={() => todonts.delete(todont.id)}>delete</button>
+			</div>
+		{/each}
+	</div>
+</div>
+
+<h1 class="font-semibold">How this works</h1>
+<ol class="list-decimal ml-4">
+	<li>
+		Setup (catch Server up, catch the Client A up)
+		<ol class="list-decimal ml-4">
+			<li>initialize and/or open Client A DB</li>
+			<li>Client A connect web socket (sending up clientAVersion and clientASiteID)</li>
+			<li>Server queries for all updates >= clientAVersion and != clientASiteID</li>
+			<li>Server `push` message with results to Client A</li>
+			<li>Client A merges results and "catches up" on all changes</li>
+			<li>Client A `push` all changes >= serverVersion and == clientASiteId to Server</li>
+			<li>Server merges and `push` changes to Client B and Client C</li>
+			<li>Client B merges change</li>
+			<li>Client C merges change</li>
+		</ol>
+	</li>
+	<li>
+		Normal flow
+		<ol class="list-decimal ml-4">
+			<li>Client A makes update</li>
+			<li>`push` update to server</li>
+			<li>server merges change</li>
+			<li>server `push` update to Client B and Client C</li>
+			<li>Client B merges change</li>
+			<li>Client C merges change</li>
+		</ol>
+	</li>
+	<li>
+		Database migrations
+		<ol class="list-decimal ml-4">
+			<li>???</li>
+		</ol>
+	</li>
+</ol>
