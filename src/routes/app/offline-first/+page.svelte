@@ -7,6 +7,9 @@
 
 	let newTodo = '';
 	let newTodont = '';
+	let siteId = '';
+	let version = '';
+	let peers = {};
 
 	// import this from somewhere
 	const schema = [
@@ -18,7 +21,15 @@
 
 	const { store } = db({ schema, name: data.dbName, wsUrl: data.url });
 	const todos = store({
-		query: async (db) => await db.execO('SELECT * FROM todos'),
+		query: async (db) => {
+			const q = await db.execO('SELECT * FROM todos');
+			const [x] = await db.exec(`SELECT crsql_db_version();`);
+			version = x[0];
+			const [y] = await db.exec(`SELECT hex(crsql_site_id());`);
+			siteId = y[0];
+			peers = await db.execO(`SELECT hex(site_id), version FROM crsql_tracked_peers`);
+			return q;
+		},
 		commands: {
 			insert: async (db, name) =>
 				await db.exec('INSERT INTO todos VALUES (?, ?, ?)', [nanoid(), name, 0]),
@@ -28,7 +39,16 @@
 		}
 	});
 	const todonts = store({
-		query: async (db) => await db.execO('SELECT * FROM todonts'),
+		query: async (db) => {
+			const q = await db.execO('SELECT * FROM todonts');
+			const [x] = await db.exec(`SELECT crsql_db_version();`);
+			version = x[0];
+			const [y] = await db.exec(`SELECT hex(crsql_site_id());`);
+			siteId = y[0];
+			peers = await db.execO(`SELECT hex(site_id), version FROM crsql_tracked_peers`);
+
+			return q;
+		},
 		commands: {
 			insert: async (db, name) =>
 				await db.exec('INSERT INTO todonts VALUES (?, ?, ?)', [nanoid(), name, 0]),
@@ -39,6 +59,8 @@
 	});
 </script>
 
+<h1>{siteId} {version}</h1>
+<div>{JSON.stringify(peers)}</div>
 <div class="flex gap-10">
 	<div>
 		<p>todos</p>

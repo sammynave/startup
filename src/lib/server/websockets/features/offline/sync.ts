@@ -90,7 +90,9 @@ export class Sync {
 		});
 
 		// Make sure this happens AFTER event handlers are declared
+		// RE-THINK this.
 		sync.catchUpClient(clientSiteId);
+		// catch up server should force catch up the other clients when the server receives the updates
 		sync.catchUpServer(clientSiteId);
 
 		return sync;
@@ -119,6 +121,30 @@ export class Sync {
 		this.siteId = siteId;
 		this.clientSiteId = clientSiteId;
 	}
+
+	/*
+			STATES
+			- 1. connection
+			- 2. client announces presence with siteId
+			- 3. server queries tracked_peers and compares versions
+				- A. Client is <= Server
+					- 1. server queries for changes >= client's version
+					- 2. server sends `update` with changes
+						- 1. client receives updates
+						- 2. client merges updates
+						- 3. client sets tracked peers (server only - i don't think we need others)
+					- 3. server sets client version tracked_peers to last change sent
+				- B. Server is <= Client
+					- 1. server sends `request-for-update`
+						- 1. client queries server version in tracked_peers
+						- 2. client queries for changes >= server's version
+						- 3. client sends `update` with changes
+							- 1. server receives `update`
+							- 2. server merges changes
+							- 3. server sends `update` to all tracked_peers with version <= last change received
+							- 4. server updates tracked_peers
+					- 2. client sets server version in tracked_peers to last change sent
+		*/
 
 	catchUpServer(clientSiteId) {
 		// Here we can send down the last seen id or something.
@@ -177,7 +203,6 @@ export class Sync {
 
 	private shouldProcess(message) {
 		const isFromSelf = message?.siteId === this.clientSiteId;
-		console.log(message);
 		if (isFromSelf && message.type === 'update') {
 			return true;
 		}
