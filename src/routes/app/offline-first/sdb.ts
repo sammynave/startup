@@ -27,7 +27,7 @@ export function latestVersions(changes) {
 async function pushOfflineChangesToServer(database, ws, version) {
 	const changes = await database.db.exec(
 		`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-	  FROM crsql_changes WHERE site_id = crsql_site_id() AND db_version > ?`,
+	  FROM crsql_changes WHERE site_id = crsql_site_id() AND db_version >= ?`,
 		[version]
 	);
 
@@ -61,10 +61,12 @@ async function pushOfflineChangesToServer(database, ws, version) {
 function wsMessageHandler({
 	database,
 	update,
+	serverSiteId,
 	identifier
 }: {
 	database: Database;
 	update: () => Promise<void>;
+	serverSiteId: string;
 	identifier?: string;
 }) {
 	return async function (event: Event) {
@@ -79,17 +81,14 @@ function wsMessageHandler({
 			if ((type === 'update' && siteId !== clientSiteId) || type === 'pull') {
 				await database.merge(changes);
 
-				const changeSiteVersions = latestVersions(changes);
-
-				changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
-					await database.db.exec(
-						`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), ?, 0, 0)
+				await database.db.exec(
+					`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+				    VALUES (unhex(?), crsql_db_version(), 0, 0)
 				    ON CONFLICT([site_id], [tag], [event])
 				    DO UPDATE SET version=excluded.version`,
-						[changeSiteId, changeDbVersion]
-					);
-				});
+					[serverSiteId]
+				);
+
 				await update();
 			}
 
@@ -113,14 +112,15 @@ async function setupWs({ url, database }: { url: string; database: Promise<Datab
 	return ws;
 }
 
-export function db({ schema, name, wsUrl }) {
+export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 	if (!browser) {
 		// No SSR
 		return { store: () => readable([]) };
 	}
+	console.log({ serverSiteId });
 	const databasePromise = Database.load({ schema, name });
 	const wsPromise = setupWs({ url: wsUrl, database: databasePromise });
-	const store = ({ query, commands, identifier }) => {
+	const store = ({ query, commands }) => {
 		const q = writable([]);
 		databasePromise.then(async (database) => {
 			const ws = await wsPromise;
@@ -128,7 +128,10 @@ export function db({ schema, name, wsUrl }) {
 			// Maybe this should register the listener in a store,
 			// we may be over subscribing since we add a listener with
 			// every `store`
-			ws.addEventListener('message', wsMessageHandler({ database, update, identifier }));
+			ws.addEventListener(
+				'message',
+				wsMessageHandler({ database, update, identifier, serverSiteId })
+			);
 			await update();
 		});
 
@@ -139,24 +142,25 @@ export function db({ schema, name, wsUrl }) {
 					const db = await databasePromise;
 					const results = await fn(db.db, args);
 					q.set(await query(db.db));
-					const changes = await db.db.exec(
-						`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-            FROM crsql_changes WHERE site_id = crsql_site_id()
-            AND db_version >= crsql_db_version()`
+					const serverSiteVersion = await db.db.execO(
+						`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`,
+						[serverSiteId]
 					);
 
-					const changeSiteVersions = latestVersions(changes);
+					const changes = await db.db.exec(
+						`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
+            FROM crsql_changes WHERE db_version >= ?`,
+						[serverSiteVersion[0].version]
+					);
 
-					changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
-						await db.db.exec(
-							`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), ?, 0, 0)
+					await db.db.exec(
+						`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+				    VALUES (unhex(?), crsql_db_version(), 0, 0)
 				    ON CONFLICT([site_id], [tag], [event])
 				    DO UPDATE SET version=excluded.version`,
-							[changeSiteId, changeDbVersion]
-						);
-					});
-
+						[serverSiteId]
+					);
+					console.log({ changes });
 					const ws = await wsPromise;
 					ws.send(
 						encoder.encode(

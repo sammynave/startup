@@ -37,8 +37,8 @@ export class Sync {
 		clientSiteId: string;
 		clientVersion: number;
 	}) {
-		const db = await dbFrom(`${ws.session.user.userId}.db`);
-		const { siteId, version } = await db
+		const db = dbFrom(`${ws.session.user.userId}.db`);
+		const { siteId, version } = db
 			.prepare('SELECT hex(crsql_site_id()) as siteId, crsql_db_version() as version;')
 			.get();
 		const sync = new Sync({ ws, stream, db, version, siteId });
@@ -69,7 +69,7 @@ export class Sync {
 					await db.prepare(INSERT_CHANGES).run(...change);
 				});
 
-				const changeSiteVersions = latestVersions(changes);
+				const changeSiteVersions = latestVersions(changes).filter(([sId]) => sId !== siteId);
 
 				changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
 					await db
@@ -142,14 +142,16 @@ export class Sync {
 			.prepare(
 				`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
 				FROM crsql_changes WHERE site_id != unhex(:clientSiteId)
-				AND db_version > :lastVersion`
+				AND db_version >= :lastVersion`
 			)
 			.all({
 				clientSiteId,
 				lastVersion
 			});
 
-		const changeSiteVersions = latestVersions(changes.map((change) => Object.values(change)));
+		const changeSiteVersions = latestVersions(
+			changes.map((change) => Object.values(change))
+		).filter(([siteId]) => siteId !== this.siteId);
 
 		changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
 			await this.db

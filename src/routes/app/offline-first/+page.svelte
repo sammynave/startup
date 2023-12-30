@@ -15,7 +15,12 @@
 		`SELECT crsql_as_crr('todonts');`
 	];
 
-	const { store } = db({ schema, name: data.dbName, wsUrl: data.url });
+	const { store } = db({
+		schema,
+		name: data.dbName,
+		wsUrl: data.url,
+		serverSiteId: data.serverSiteId
+	});
 	const todos = store({
 		query: async (db) => await db.execO('SELECT * FROM todos'),
 		commands: {
