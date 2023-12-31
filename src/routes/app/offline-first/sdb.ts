@@ -24,24 +24,27 @@ export function latestVersions(changes) {
 	);
 }
 
-async function pushOfflineChangesToServer(database, ws, version) {
+async function pushOfflineChangesToServer(database, ws, version, serverSiteId) {
+	// const changes = await database.db.exec(
+	// 	`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
+	//   FROM crsql_changes WHERE site_id = crsql_site_id() AND db_version >= ?`,
+	// 	[version ? version - 1 : 0]
+	// );
+
+	// ALL
 	const changes = await database.db.exec(
 		`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-	  FROM crsql_changes WHERE site_id = crsql_site_id() AND db_version >= ?`,
-		[version]
+	  FROM crsql_changes`
 	);
 
-	const changeSiteVersions = latestVersions(changes);
 	// sending so we're using the local db_version
-	changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
-		await database.db.exec(
-			`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), ?, 0, 0)
+	await database.db.exec(
+		`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+				    VALUES (unhex(?), crsql_db_version(), 0, 0)
 				    ON CONFLICT([site_id], [tag], [event])
 				    DO UPDATE SET version=excluded.version`,
-			[changeSiteId, changeDbVersion]
-		);
-	});
+		[serverSiteId]
+	);
 
 	// maybe this should be a POST so we can get a nicer
 	// user experience. that way we can await until the
@@ -80,7 +83,6 @@ function wsMessageHandler({
 
 			if ((type === 'update' && siteId !== clientSiteId) || type === 'pull') {
 				await database.merge(changes);
-
 				await database.db.exec(
 					`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
 				    VALUES (unhex(?), crsql_db_version(), 0, 0)
@@ -93,7 +95,7 @@ function wsMessageHandler({
 			}
 
 			if (type === 'connected') {
-				await pushOfflineChangesToServer(database, this, version);
+				await pushOfflineChangesToServer(database, this, version, serverSiteId);
 			}
 		}
 	};
@@ -117,7 +119,6 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 		// No SSR
 		return { store: () => readable([]) };
 	}
-	console.log({ serverSiteId });
 	const databasePromise = Database.load({ schema, name });
 	const wsPromise = setupWs({ url: wsUrl, database: databasePromise });
 	const store = ({ query, commands }) => {
@@ -142,15 +143,21 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 					const db = await databasePromise;
 					const results = await fn(db.db, args);
 					q.set(await query(db.db));
+
 					const serverSiteVersion = await db.db.execO(
 						`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`,
 						[serverSiteId]
 					);
-
+					// const v = serverSiteVersion[0]?.version ? serverSiteVersion[0].version - 1 : 0;
+					// const changes = await db.db.exec(
+					// 	`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
+					//   FROM crsql_changes WHERE db_version >= ?`,
+					// 	[v]
+					// );
+					// ALL
 					const changes = await db.db.exec(
 						`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-            FROM crsql_changes WHERE db_version >= ?`,
-						[serverSiteVersion[0].version]
+					  FROM crsql_changes`
 					);
 
 					await db.db.exec(
@@ -160,7 +167,7 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 				    DO UPDATE SET version=excluded.version`,
 						[serverSiteId]
 					);
-					console.log({ changes });
+
 					const ws = await wsPromise;
 					ws.send(
 						encoder.encode(

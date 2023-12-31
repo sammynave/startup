@@ -21,30 +21,80 @@
 		wsUrl: data.url,
 		serverSiteId: data.serverSiteId
 	});
+
+	const me = store({
+		query: async (db) =>
+			await db.execO('SELECT hex(crsql_site_id()) as site_id, crsql_db_version() as version'),
+		commands: {
+			requery: async (db) => console.log('requerying')
+		},
+		identifier: 'peers'
+	});
+	const peers = store({
+		query: async (db) => {
+			console.log('getting peers');
+			return await db.execO('SELECT hex(site_id) as site_id, version FROM crsql_tracked_peers');
+		},
+		commands: {
+			requery: async (db) => console.log('requerying')
+		},
+		identifier: 'peers'
+	});
 	const todos = store({
 		query: async (db) => await db.execO('SELECT * FROM todos'),
 		commands: {
-			insert: async (db, name) =>
-				await db.exec('INSERT INTO todos VALUES (?, ?, ?)', [nanoid(), name, 0]),
-			toggle: async (db, id) =>
-				await db.exec('UPDATE todos SET complete = not(complete) WHERE id = ?', [id]),
-			delete: async (db, id) => await db.exec('DELETE FROM todos WHERE id = ?', [id])
+			insert: async (db, name) => {
+				await db.exec('INSERT INTO todos VALUES (?, ?, ?)', [nanoid(), name, 0]);
+				await peers.requery();
+				await me.requery();
+			},
+			toggle: async (db, id) => {
+				await db.exec('UPDATE todos SET complete = not(complete) WHERE id = ?', [id]);
+
+				await peers.requery();
+				await me.requery();
+			},
+
+			delete: async (db, id) => {
+				await db.exec('DELETE FROM todos WHERE id = ?', [id]);
+				await peers.requery();
+				await me.requery();
+			}
 		},
 		identifier: 'todos'
 	});
 	const todonts = store({
 		query: async (db) => await db.execO('SELECT * FROM todonts'),
 		commands: {
-			insert: async (db, name) =>
-				await db.exec('INSERT INTO todonts VALUES (?, ?, ?)', [nanoid(), name, 0]),
-			toggle: async (db, id) =>
-				await db.exec('UPDATE todonts SET complete = not(complete) WHERE id = ?', [id]),
-			delete: async (db, id) => await db.exec('DELETE FROM todonts WHERE id = ?', [id])
+			insert: async (db, name) => {
+				await db.exec('INSERT INTO todonts VALUES (?, ?, ?)', [nanoid(), name, 0]);
+				peers.requery();
+				me.requery();
+			},
+			toggle: async (db, id) => {
+				await db.exec('UPDATE todonts SET complete = not(complete) WHERE id = ?', [id]);
+				peers.requery();
+				me.requery();
+			},
+			delete: async (db, id) => {
+				await db.exec('DELETE FROM todonts WHERE id = ?', [id]);
+				peers.requery();
+				me.requery();
+			}
 		},
 		identifier: 'todonts'
 	});
+
+	$: console.log($peers);
 </script>
 
+{#each $me as m}
+	<div>me: {m.site_id} {m.version}</div>
+{/each}
+<div>server: {data.serverSiteId}</div>
+{#each $peers as peer}
+	<div>{peer.site_id} {peer.version}</div>
+{/each}
 <div class="flex gap-10">
 	<div>
 		<p>todos</p>

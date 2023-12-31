@@ -17,7 +17,6 @@ export class Sync {
 	private userId: string;
 	private redisClient: Redis = client();
 	private db: ReturnType<typeof Database>;
-	private version: number;
 	private siteId: string;
 
 	/*
@@ -38,10 +37,8 @@ export class Sync {
 		clientVersion: number;
 	}) {
 		const db = dbFrom(`${ws.session.user.userId}.db`);
-		const { siteId, version } = db
-			.prepare('SELECT hex(crsql_site_id()) as siteId, crsql_db_version() as version;')
-			.get();
-		const sync = new Sync({ ws, stream, db, version, siteId });
+		const { siteId } = db.prepare('SELECT hex(crsql_site_id()) as siteId;').get();
+		const sync = new Sync({ ws, stream, db, siteId });
 
 		const subClient = create();
 		await subClient.subscribe(sync.stream, (err) => {
@@ -51,6 +48,20 @@ export class Sync {
 		});
 
 		const subscription = await subClient.on('messageBuffer', (stream, message) => {
+			const { clientVersion } = db
+				.prepare(
+					`SELECT version as clientVersion FROM crsql_tracked_peers WHERE site_id = unhex(?)`
+				)
+				.get(clientSiteId);
+			const { serverVersion } = db.prepare('SELECT crsql_db_version() as serverVersion;').get();
+
+			db.prepare(
+				`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+				    VALUES (unhex(?), crsql_db_version(), 0, 0)
+				    ON CONFLICT([site_id], [tag], [event])
+				    DO UPDATE SET version=excluded.version`
+			).run(clientSiteId);
+
 			sync.notify(message);
 		});
 
@@ -65,22 +76,18 @@ export class Sync {
 					1. client inserts a new entry and sends an update
 					2. client receives a message of `type: 'connected'`, then it sends up all changes
 				*/
-				changes.forEach(async (change, i) => {
-					await db.prepare(INSERT_CHANGES).run(...change);
+				changes.forEach((change, i) => {
+					db.prepare(INSERT_CHANGES).run(...change);
 				});
 
-				const changeSiteVersions = latestVersions(changes).filter(([sId]) => sId !== siteId);
+				const fromSiteId = parsed.siteId;
 
-				changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
-					await db
-						.prepare(
-							`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), ?, 0, 0)
+				db.prepare(
+					`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+				    VALUES (unhex(?), crsql_db_version(), 0, 0)
 				    ON CONFLICT([site_id], [tag], [event])
 				    DO UPDATE SET version=excluded.version`
-						)
-						.run(changeSiteId, changeDbVersion);
-				});
+				).run(fromSiteId);
 
 				await sync.receive(data);
 			}
@@ -91,8 +98,8 @@ export class Sync {
 		});
 
 		// Make sure this happens AFTER event handlers are declared
-		await sync.catchUpClient(clientSiteId);
-		await sync.catchUpServer(clientSiteId);
+		sync.catchUpServer(clientSiteId);
+		sync.catchUpClient(clientSiteId);
 
 		return sync;
 	}
@@ -101,74 +108,78 @@ export class Sync {
 		ws,
 		stream,
 		db,
-		version,
 		siteId
 	}: {
 		ws: ExtendedWebSocket;
 		stream: string;
 		db: ReturnType<typeof Database>;
-		version: number;
 		siteId: string;
 	}) {
 		this.stream = stream;
 		this.ws = ws;
 		this.userId = ws.session.user.userId;
 		this.db = db;
-		this.version = version;
 		this.siteId = siteId;
 	}
 
-	async catchUpServer(clientSiteId) {
+	catchUpServer(clientSiteId) {
 		// Here we can send down the last seen id or something.
 		// that way we don't need the entire contents of the db
 
-		const result = await this.db
+		const result = this.db
 			.prepare(`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`)
 			.get(clientSiteId);
 		const version = result?.version ?? 0;
-		await this.notify(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
+		this.notify(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
 	}
 
-	async catchUpClient(clientSiteId: string) {
+	catchUpClient(clientSiteId: string) {
 		// Maybe we can do something to only send down what's needed.
 		// just updates after the last update by `${clientSiteId}
 
-		const result = await this.db
+		const result = this.db
 			.prepare(`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`)
 			.get(clientSiteId);
-		const lastVersion = result?.version ?? 0;
 
-		const changes = await this.db
+		const lastVersion = result?.version ? result.version - 1 : 0;
+
+		// ALL
+		const changes = this.db
 			.prepare(
 				`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
 				FROM crsql_changes WHERE site_id != unhex(:clientSiteId)
-				AND db_version >= :lastVersion`
+				`
 			)
 			.all({
-				clientSiteId,
-				lastVersion
+				clientSiteId
 			});
+		// const changes = this.db
+		// 	.prepare(
+		// 		`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
+		// 		FROM crsql_changes WHERE site_id != unhex(:clientSiteId)
+		// 		AND db_version >= :lastVersion`
+		// 	)
+		// 	.all({
+		// 		clientSiteId,
+		// 		lastVersion
+		// 	});
 
-		const changeSiteVersions = latestVersions(
-			changes.map((change) => Object.values(change))
-		).filter(([siteId]) => siteId !== this.siteId);
-
-		changeSiteVersions.forEach(async ([changeSiteId, changeDbVersion]) => {
-			await this.db
-				.prepare(
-					`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), ?, 0, 0)
+		this.db
+			.prepare(
+				`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+				    VALUES (unhex(?), crsql_db_version(), 0, 0)
 				    ON CONFLICT([site_id], [tag], [event])
 				    DO UPDATE SET version=excluded.version`
-				)
-				.run(changeSiteId, changeDbVersion);
-		});
+			)
+			.run(clientSiteId);
+
+		const { version } = this.db.prepare(`SELECT crsql_db_version() as version;`).get();
 
 		if (changes.length) {
 			const message = JSON.stringify({
 				type: 'pull',
 				siteId: this.siteId,
-				version: this.version,
+				version: version,
 				changes: changes.map((change) => Object.values(change))
 			});
 			this.notify(message);
