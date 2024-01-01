@@ -5,27 +5,25 @@ const INSERT_CHANGES = `INSERT INTO crsql_changes VALUES (?, unhex(?), ?, ?, ?, 
 
 export class Database {
 	db: DB;
+	siteId: string;
 
 	static async load({ schema, name }: { schema: string[]; name: string }) {
 		const sqlite = await initWasm(() => wasmUrl);
 		const db = await sqlite.open(name);
-		const database = new Database(db);
+		const [{ siteId }] = await db.execO(`SELECT hex(crsql_site_id()) as siteId;`);
+		const database = new Database(db, siteId);
 		await database.db.execMany(schema);
 		return database;
 	}
 
-	constructor(db: DB) {
+	constructor(db: DB, siteId: string) {
 		this.db = db;
+		this.siteId = siteId;
 	}
 
 	async version() {
 		const [[version]] = await this.db.exec(`SELECT crsql_db_version();`);
 		return version;
-	}
-
-	async siteId() {
-		const [[siteId]] = await this.db.exec(`SELECT hex(crsql_site_id());`);
-		return siteId;
 	}
 
 	async merge(changes) {

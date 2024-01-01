@@ -53,7 +53,7 @@ async function pushOfflineChangesToServer(database, ws, version, serverSiteId) {
 	const message = encoder.encode(
 		JSON.stringify({
 			type: 'update',
-			siteId: await database.siteId(),
+			siteId: database.siteId,
 			version: await database.version(),
 			changes
 		})
@@ -77,7 +77,7 @@ function wsMessageHandler({
 		// maybe there's some kind of queue or something we can use to only apply
 		// appropriate udpates
 		if (typeof event.data !== 'string') {
-			const clientSiteId = await database.siteId();
+			const clientSiteId = database.siteId;
 			const m = await event.data.text();
 			const { type, changes, siteId, version } = JSON.parse(m);
 
@@ -106,7 +106,7 @@ async function setupWs({ url, database }: { url: string; database: Promise<Datab
 	const db = await database;
 	const u = new URL(url);
 	const features = JSON.parse(u.searchParams.get('features') as string);
-	features[0].clientSiteId = await db.siteId();
+	features[0].clientSiteId = db.siteId;
 	features[0].clientVersion = await db.version();
 	u.searchParams.set('features', JSON.stringify(features));
 	const ws = new WebSocket(`${decodeURI(u.href)}`);
@@ -173,7 +173,7 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 						encoder.encode(
 							JSON.stringify({
 								type: 'update',
-								siteId: await db.siteId(),
+								siteId: db.siteId,
 								version: await db.version(),
 								changes
 							})

@@ -26,17 +26,16 @@
 		query: async (db) =>
 			await db.execO('SELECT hex(crsql_site_id()) as site_id, crsql_db_version() as version'),
 		commands: {
-			requery: async (db) => console.log('requerying')
+			requery: async (db) => undefined
 		},
 		identifier: 'peers'
 	});
 	const peers = store({
 		query: async (db) => {
-			console.log('getting peers');
 			return await db.execO('SELECT hex(site_id) as site_id, version FROM crsql_tracked_peers');
 		},
 		commands: {
-			requery: async (db) => console.log('requerying')
+			requery: async (db) => undefined
 		},
 		identifier: 'peers'
 	});
@@ -84,8 +83,6 @@
 		},
 		identifier: 'todonts'
 	});
-
-	$: console.log($peers);
 </script>
 
 {#each $me as m}
