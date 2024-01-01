@@ -153,16 +153,6 @@ export class Sync {
 			.all({
 				clientSiteId
 			});
-		// const changes = this.db
-		// 	.prepare(
-		// 		`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-		// 		FROM crsql_changes WHERE site_id != unhex(:clientSiteId)
-		// 		AND db_version >= :lastVersion`
-		// 	)
-		// 	.all({
-		// 		clientSiteId,
-		// 		lastVersion
-		// 	});
 
 		this.db
 			.prepare(

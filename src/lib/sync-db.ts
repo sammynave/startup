@@ -27,7 +27,6 @@ export class Database {
 	}
 
 	async merge(changes) {
-		// const trackedPeers = await this.db.exec(`SELECT * FROM crsql_tracked_peers`);
 		// TODO: USE PREPARED STATEMENTS
 		await this.db.tx(async (tx) => {
 			changes.forEach(async (change) => {

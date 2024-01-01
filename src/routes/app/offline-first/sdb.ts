@@ -25,12 +25,6 @@ export function latestVersions(changes) {
 }
 
 async function pushOfflineChangesToServer(database, ws, version, serverSiteId) {
-	// const changes = await database.db.exec(
-	// 	`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-	//   FROM crsql_changes WHERE site_id = crsql_site_id() AND db_version >= ?`,
-	// 	[version ? version - 1 : 0]
-	// );
-
 	// ALL
 	const changes = await database.db.exec(
 		`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
@@ -148,13 +142,7 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 						`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`,
 						[serverSiteId]
 					);
-					// const v = serverSiteVersion[0]?.version ? serverSiteVersion[0].version - 1 : 0;
-					// const changes = await db.db.exec(
-					// 	`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-					//   FROM crsql_changes WHERE db_version >= ?`,
-					// 	[v]
-					// );
-					// ALL
+
 					const changes = await db.db.exec(
 						`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
 					  FROM crsql_changes`
