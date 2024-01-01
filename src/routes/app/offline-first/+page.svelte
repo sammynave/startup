@@ -1,22 +1,15 @@
 <script lang="ts">
 	import { nanoid } from 'nanoid/non-secure';
 	import { db } from './sdb.js';
+	import schemaContent from '$lib/sync/schema.sql?raw';
 
 	export let data;
 
 	let newTodo = '';
 	let newTodont = '';
-
-	// import this from somewhere
-	const schema = [
-		`CREATE TABLE IF NOT EXISTS todos (id PRIMARY KEY NOT NULL, content, complete);`,
-		`SELECT crsql_as_crr('todos');`,
-		`CREATE TABLE IF NOT EXISTS todonts (id PRIMARY KEY NOT NULL, content, complete);`,
-		`SELECT crsql_as_crr('todonts');`
-	];
-
+	let online = false;
 	const { store } = db({
-		schema,
+		schema: { name: 'schema.sql', schemaContent },
 		name: data.dbName,
 		wsUrl: data.url,
 		serverSiteId: data.serverSiteId
@@ -84,6 +77,11 @@
 		identifier: 'todonts'
 	});
 </script>
+
+<svelte:window bind:online />
+<h1>
+	{#if online}Online{:else}Offline{/if}
+</h1>
 
 {#each $me as m}
 	<div>me: {m.site_id} {m.version}</div>

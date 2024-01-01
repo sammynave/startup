@@ -7,12 +7,18 @@ export class Database {
 	db: DB;
 	siteId: string;
 
-	static async load({ schema, name }: { schema: string[]; name: string }) {
+	static async load({
+		schema,
+		name
+	}: {
+		schema: { name: string; schemaContent: string };
+		name: string;
+	}) {
 		const sqlite = await initWasm(() => wasmUrl);
 		const db = await sqlite.open(name);
 		const [{ siteId }] = await db.execO(`SELECT hex(crsql_site_id()) as siteId;`);
 		const database = new Database(db, siteId);
-		await database.db.execMany(schema);
+		await db.automigrateTo(schema.name, schema.schemaContent);
 		return database;
 	}
 
