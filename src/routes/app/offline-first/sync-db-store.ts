@@ -1,5 +1,5 @@
 import { browser } from '$app/environment';
-import { Database } from '$lib/sync-db';
+import { Database } from './server-sync-db';
 import { onDestroy } from 'svelte';
 import { readable, writable } from 'svelte/store';
 

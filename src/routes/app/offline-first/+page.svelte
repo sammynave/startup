@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { nanoid } from 'nanoid/non-secure';
-	import { db } from './sdb.js';
+	import { db } from './sync-db-store.js';
 	import schemaContent from '$lib/sync/schema.sql?raw';
 
 	export let data;

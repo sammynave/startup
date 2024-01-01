@@ -2,9 +2,8 @@ import { client, create } from '../../redis-client';
 import type { ExtendedWebSocket } from '../../../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 import type { Redis } from 'ioredis';
 import { dbFrom } from '$lib/server/sync-db/db';
-import type Database from 'better-sqlite3';
+import type BetterSqlite3 from 'better-sqlite3';
 import { WebSocket } from 'ws';
-import { latestVersions } from '../../../../../routes/app/offline-first/sdb';
 
 const INSERT_CHANGES = `INSERT INTO crsql_changes VALUES (?, unhex(?), ?, ?, ?, ?, unhex(?), ?, ?)`;
 
@@ -16,8 +15,10 @@ export class Sync {
 	private ws: ExtendedWebSocket;
 	private userId: string;
 	private redisClient: Redis = client();
-	private db: ReturnType<typeof Database>;
+	private db: ReturnType<typeof BetterSqlite3>;
 	private siteId: string;
+	insertChangesStatement: BetterSqlite3.Statement;
+	insertTrackedPeersStatement: BetterSqlite3.Statement;
 
 	/*
 	 This is the preferred way to instantiate this class for 2 reasons:
@@ -48,46 +49,22 @@ export class Sync {
 		});
 
 		const subscription = await subClient.on('messageBuffer', (stream, message) => {
-			const { clientVersion } = db
-				.prepare(
-					`SELECT version as clientVersion FROM crsql_tracked_peers WHERE site_id = unhex(?)`
-				)
-				.get(clientSiteId);
-			const { serverVersion } = db.prepare('SELECT crsql_db_version() as serverVersion;').get();
+			sync.insertTrackedPeersStatement.run(clientSiteId);
 
-			db.prepare(
-				`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), crsql_db_version(), 0, 0)
-				    ON CONFLICT([site_id], [tag], [event])
-				    DO UPDATE SET version=excluded.version`
-			).run(clientSiteId);
-
-			sync.notify(message);
+			sync.send(message);
 		});
 
 		ws.on('message', async (data) => {
 			const parsed = JSON.parse(data.toString());
 			const changes = parsed.changes;
 			if (parsed.type === 'update') {
-				/*
-					some client is sending an update to the server
-					which then is forwarded to all clients -> `sync.recieve(data)`
-					this can be triggered in two ways:
-					1. client inserts a new entry and sends an update
-					2. client receives a message of `type: 'connected'`, then it sends up all changes
-				*/
-				changes.forEach((change, i) => {
-					db.prepare(INSERT_CHANGES).run(...change);
+				changes.forEach((change) => {
+					sync.insertChangesStatement.run(...change);
 				});
 
 				const fromSiteId = parsed.siteId;
 
-				db.prepare(
-					`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), crsql_db_version(), 0, 0)
-				    ON CONFLICT([site_id], [tag], [event])
-				    DO UPDATE SET version=excluded.version`
-				).run(fromSiteId);
+				sync.insertTrackedPeersStatement.run(fromSiteId);
 
 				await sync.receive(data);
 			}
@@ -120,6 +97,12 @@ export class Sync {
 		this.userId = ws.session.user.userId;
 		this.db = db;
 		this.siteId = siteId;
+		this.insertChangesStatement = db.prepare(INSERT_CHANGES);
+		this.insertTrackedPeersStatement =
+			db.prepare(`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+		VALUES (unhex(?), crsql_db_version(), 0, 0)
+		ON CONFLICT([site_id], [tag], [event])
+		DO UPDATE SET version=excluded.version`);
 	}
 
 	catchUpServer(clientSiteId) {
@@ -130,19 +113,10 @@ export class Sync {
 			.prepare(`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`)
 			.get(clientSiteId);
 		const version = result?.version ?? 0;
-		this.notify(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
+		this.send(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
 	}
 
 	catchUpClient(clientSiteId: string) {
-		// Maybe we can do something to only send down what's needed.
-		// just updates after the last update by `${clientSiteId}
-
-		const result = this.db
-			.prepare(`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`)
-			.get(clientSiteId);
-
-		const lastVersion = result?.version ? result.version - 1 : 0;
-
 		// ALL
 		const changes = this.db
 			.prepare(
@@ -153,15 +127,7 @@ export class Sync {
 			.all({
 				clientSiteId
 			});
-
-		this.db
-			.prepare(
-				`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), crsql_db_version(), 0, 0)
-				    ON CONFLICT([site_id], [tag], [event])
-				    DO UPDATE SET version=excluded.version`
-			)
-			.run(clientSiteId);
+		this.insertTrackedPeersStatement.run(clientSiteId);
 
 		const { version } = this.db.prepare(`SELECT crsql_db_version() as version;`).get();
 
@@ -172,22 +138,17 @@ export class Sync {
 				version: version,
 				changes: changes.map((change) => Object.values(change))
 			});
-			this.notify(message);
+			this.send(message);
 		}
 	}
 
-	private notify(message) {
+	private send(message) {
 		if (this.ws.readyState === WebSocket.OPEN) {
 			this.ws.send(message, { binary: true });
 		}
 	}
 
-	private async publishMessage(message: ArrayBufferLike) {
-		await this.redisClient.lpush(this.stream, message);
-		await this.redisClient.publish(this.stream, message);
-	}
-
 	private async receive(message: Buffer) {
-		await this.publishMessage(message);
+		await this.redisClient.publish(this.stream, message);
 	}
 }
