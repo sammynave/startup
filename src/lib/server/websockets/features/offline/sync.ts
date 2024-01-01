@@ -6,6 +6,14 @@ import type BetterSqlite3 from 'better-sqlite3';
 import { WebSocket } from 'ws';
 
 const INSERT_CHANGES = `INSERT INTO crsql_changes VALUES (?, unhex(?), ?, ?, ?, ?, unhex(?), ?, ?)`;
+const INSERT_TRACKED_PEERS = `INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+VALUES (unhex(?), crsql_db_version(), 0, 0)
+ON CONFLICT([site_id], [tag], [event])
+DO UPDATE SET version=excluded.version`;
+const SELECT_VERSION = `SELECT crsql_db_version() as version;`;
+const SELECT_NON_CLIENT_CHANGES = `SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
+FROM crsql_changes WHERE site_id != unhex(:clientSiteId)`;
+const SELECT_VERSION_FROM_TRACKED_PEER = `SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`;
 
 // TODO: review https://github.com/vlcn-io/js/blob/main/packages/ws-server/src/DB.ts
 // see if any edge cases have been missed
@@ -19,6 +27,9 @@ export class Sync {
 	private siteId: string;
 	insertChangesStatement: BetterSqlite3.Statement;
 	insertTrackedPeersStatement: BetterSqlite3.Statement;
+	versionStatement: BetterSqlite3.Statement;
+	nonClientChanges: BetterSqlite3.Statement;
+	versionOfTrackedPeer: BetterSqlite3.Statement;
 
 	/*
 	 This is the preferred way to instantiate this class for 2 reasons:
@@ -37,9 +48,7 @@ export class Sync {
 		clientSiteId: string;
 		clientVersion: number;
 	}) {
-		const db = dbFrom(`${ws.session.user.userId}.db`);
-		const { siteId } = db.prepare('SELECT hex(crsql_site_id()) as siteId;').get();
-		const sync = new Sync({ ws, stream, db, siteId });
+		const sync = new Sync({ ws, stream, name: `${ws.session.user.userId}.db` });
 
 		const subClient = create();
 		await subClient.subscribe(sync.stream, (err) => {
@@ -47,29 +56,12 @@ export class Sync {
 				console.error('Failed to subscribe: %s', err.message);
 			}
 		});
-
 		const subscription = await subClient.on('messageBuffer', (stream, message) => {
 			sync.insertTrackedPeersStatement.run(clientSiteId);
-
 			sync.send(message);
 		});
 
-		ws.on('message', async (data) => {
-			const parsed = JSON.parse(data.toString());
-			const changes = parsed.changes;
-			if (parsed.type === 'update') {
-				changes.forEach((change) => {
-					sync.insertChangesStatement.run(...change);
-				});
-
-				const fromSiteId = parsed.siteId;
-
-				sync.insertTrackedPeersStatement.run(fromSiteId);
-
-				await sync.receive(data);
-			}
-		});
-
+		ws.on('message', sync.onMessage.bind(sync));
 		ws.on('close', async () => {
 			await subscription.unsubscribe();
 		});
@@ -84,58 +76,58 @@ export class Sync {
 	private constructor({
 		ws,
 		stream,
-		db,
-		siteId
+		name
 	}: {
 		ws: ExtendedWebSocket;
 		stream: string;
-		db: ReturnType<typeof Database>;
-		siteId: string;
+		name: string;
 	}) {
 		this.stream = stream;
 		this.ws = ws;
 		this.userId = ws.session.user.userId;
+
+		const db = dbFrom(name);
 		this.db = db;
+		const { siteId } = db.prepare('SELECT hex(crsql_site_id()) as siteId;').get();
 		this.siteId = siteId;
 		this.insertChangesStatement = db.prepare(INSERT_CHANGES);
-		this.insertTrackedPeersStatement =
-			db.prepare(`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-		VALUES (unhex(?), crsql_db_version(), 0, 0)
-		ON CONFLICT([site_id], [tag], [event])
-		DO UPDATE SET version=excluded.version`);
+		this.insertTrackedPeersStatement = db.prepare(INSERT_TRACKED_PEERS);
+		this.versionStatement = db.prepare(SELECT_VERSION);
+		this.nonClientChanges = db.prepare(SELECT_NON_CLIENT_CHANGES);
+		this.versionOfTrackedPeer = db.prepare(SELECT_VERSION_FROM_TRACKED_PEER);
 	}
 
-	catchUpServer(clientSiteId) {
-		// Here we can send down the last seen id or something.
-		// that way we don't need the entire contents of the db
+	async onMessage(data) {
+		const parsed = JSON.parse(data.toString());
+		const changes = parsed.changes;
+		if (parsed.type === 'update') {
+			changes.forEach((change) => {
+				this.insertChangesStatement.run(...change);
+			});
 
-		const result = this.db
-			.prepare(`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`)
-			.get(clientSiteId);
+			const fromSiteId = parsed.siteId;
+			this.insertTrackedPeersStatement.run(fromSiteId);
+			await this.receive(data);
+		}
+	}
+
+	catchUpServer(clientSiteId: string) {
+		const result = this.versionOfTrackedPeer.get(clientSiteId);
 		const version = result?.version ?? 0;
 		this.send(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
 	}
 
 	catchUpClient(clientSiteId: string) {
-		// ALL
-		const changes = this.db
-			.prepare(
-				`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-				FROM crsql_changes WHERE site_id != unhex(:clientSiteId)
-				`
-			)
-			.all({
-				clientSiteId
-			});
+		const changes = this.nonClientChanges.all({ clientSiteId });
 		this.insertTrackedPeersStatement.run(clientSiteId);
 
-		const { version } = this.db.prepare(`SELECT crsql_db_version() as version;`).get();
+		const { version } = this.versionStatement.get();
 
 		if (changes.length) {
 			const message = JSON.stringify({
 				type: 'pull',
 				siteId: this.siteId,
-				version: version,
+				version,
 				changes: changes.map((change) => Object.values(change))
 			});
 			this.send(message);
