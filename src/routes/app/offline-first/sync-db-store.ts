@@ -48,7 +48,7 @@ function wsMessageHandler({
 			}
 
 			if (type === 'connected') {
-				await pushChangesSince({ database, ws: this, sinceVersion: 0, serverSiteId });
+				await pushChangesSince({ database, ws: this, sinceVersion: version, serverSiteId });
 			}
 		}
 	};
