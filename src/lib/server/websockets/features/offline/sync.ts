@@ -62,13 +62,11 @@ export class Sync {
 		});
 
 		ws.on('message', sync.onMessage.bind(sync));
-		ws.on('close', async () => {
-			await subscription.unsubscribe();
-		});
+		ws.on('close', async () => await subscription.unsubscribe());
 
 		// Make sure this happens AFTER event handlers are declared
-		sync.catchUpServer(clientSiteId);
-		sync.catchUpClient(clientSiteId);
+		sync.pull(clientSiteId);
+		sync.push(clientSiteId);
 
 		return sync;
 	}
@@ -101,23 +99,31 @@ export class Sync {
 		const parsed = JSON.parse(data.toString());
 		const changes = parsed.changes;
 		if (parsed.type === 'update') {
-			changes.forEach((change) => {
-				this.insertChangesStatement.run(...change);
-			});
+			this.merge(changes);
 
 			const fromSiteId = parsed.siteId;
 			this.insertTrackedPeersStatement.run(fromSiteId);
-			await this.receive(data);
+
+			await this.redisClient.publish(this.stream, data);
 		}
 	}
 
-	catchUpServer(clientSiteId: string) {
+	private merge(changes) {
+		const insertChanges = this.db.transaction((changes) => {
+			for (const change of changes) {
+				this.insertChangesStatement.run(...change);
+			}
+		});
+		insertChanges(changes);
+	}
+
+	private pull(clientSiteId: string) {
 		const result = this.versionOfTrackedPeer.get(clientSiteId);
 		const version = result?.version ?? 0;
 		this.send(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
 	}
 
-	catchUpClient(clientSiteId: string) {
+	private push(clientSiteId: string) {
 		const changes = this.nonClientChanges.all({ clientSiteId });
 		this.insertTrackedPeersStatement.run(clientSiteId);
 
@@ -138,9 +144,5 @@ export class Sync {
 		if (this.ws.readyState === WebSocket.OPEN) {
 			this.ws.send(message, { binary: true });
 		}
-	}
-
-	private async receive(message: Buffer) {
-		await this.redisClient.publish(this.stream, message);
 	}
 }

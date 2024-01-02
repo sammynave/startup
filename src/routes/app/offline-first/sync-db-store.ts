@@ -9,21 +9,6 @@ function wsErrorHandler(error: Event) {
 	console.error(error);
 }
 
-export function latestVersions(changes) {
-	return Object.entries(
-		changes.reduce((acc, change) => {
-			const siteId = change[6];
-			const version = change[5];
-			if (acc[siteId]) {
-				acc[siteId] = acc[siteId] > version ? acc[siteId] : version;
-			} else {
-				acc[siteId] = version;
-			}
-			return acc;
-		}, {})
-	);
-}
-
 async function pushOfflineChangesToServer(database, ws, version, serverSiteId) {
 	// ALL
 	const changes = await database.db.exec(
@@ -77,13 +62,7 @@ function wsMessageHandler({
 
 			if ((type === 'update' && siteId !== clientSiteId) || type === 'pull') {
 				await database.merge(changes);
-				await database.db.exec(
-					`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), crsql_db_version(), 0, 0)
-				    ON CONFLICT([site_id], [tag], [event])
-				    DO UPDATE SET version=excluded.version`,
-					[serverSiteId]
-				);
+				await database.insertTrackedPeers(serverSiteId);
 
 				await update();
 			}
@@ -138,23 +117,9 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 					const results = await fn(db.db, args);
 					q.set(await query(db.db));
 
-					const serverSiteVersion = await db.db.execO(
-						`SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`,
-						[serverSiteId]
-					);
+					const changes = await db.changesSince();
 
-					const changes = await db.db.exec(
-						`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-					  FROM crsql_changes`
-					);
-
-					await db.db.exec(
-						`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), crsql_db_version(), 0, 0)
-				    ON CONFLICT([site_id], [tag], [event])
-				    DO UPDATE SET version=excluded.version`,
-						[serverSiteId]
-					);
+					await db.insertTrackedPeers(serverSiteId);
 
 					const ws = await wsPromise;
 					ws.send(

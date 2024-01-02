@@ -2,6 +2,7 @@ import initWasm, { DB } from '@vlcn.io/crsqlite-wasm';
 import wasmUrl from '@vlcn.io/crsqlite-wasm/crsqlite.wasm?url';
 
 const INSERT_CHANGES = `INSERT INTO crsql_changes VALUES (?, unhex(?), ?, ?, ?, ?, unhex(?), ?, ?)`;
+// const INSERT_TRACKED_PEERS =
 
 export class Database {
 	db: DB;
@@ -18,6 +19,7 @@ export class Database {
 		const db = await sqlite.open(name);
 		const [{ siteId }] = await db.execO(`SELECT hex(crsql_site_id()) as siteId;`);
 		const database = new Database(db, siteId);
+
 		await db.automigrateTo(schema.name, schema.schemaContent);
 		return database;
 	}
@@ -33,11 +35,28 @@ export class Database {
 	}
 
 	async merge(changes) {
-		// TODO: USE PREPARED STATEMENTS
 		await this.db.tx(async (tx) => {
 			changes.forEach(async (change) => {
 				await tx.exec(INSERT_CHANGES, change);
 			});
 		});
+	}
+
+	async insertTrackedPeers(serverSiteId) {
+		await this.db.exec(
+			`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
+				    VALUES (unhex(?), crsql_db_version(), 0, 0)
+				    ON CONFLICT([site_id], [tag], [event])
+				    DO UPDATE SET version=excluded.version`,
+			[serverSiteId]
+		);
+	}
+
+	async changesSince(since = 0) {
+		return await this.db.exec(
+			`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
+					  FROM crsql_changes WHERE db_version >= ?`,
+			[since]
+		);
 	}
 }
