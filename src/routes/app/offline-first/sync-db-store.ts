@@ -3,33 +3,14 @@ import { Database } from './server-sync-db';
 import { onDestroy } from 'svelte';
 import { readable, writable } from 'svelte/store';
 
-const encoder = new TextEncoder();
-
 function wsErrorHandler(error: Event) {
 	console.error(error);
 }
 
-async function pushOfflineChangesToServer(database, ws, version, serverSiteId) {
-	// ALL
-	const changes = await database.db.exec(
-		`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-	  FROM crsql_changes`
-	);
-
-	// sending so we're using the local db_version
-	await database.db.exec(
-		`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), crsql_db_version(), 0, 0)
-				    ON CONFLICT([site_id], [tag], [event])
-				    DO UPDATE SET version=excluded.version`,
-		[serverSiteId]
-	);
-
-	// maybe this should be a POST so we can get a nicer
-	// user experience. that way we can await until the
-	// changes are here rather than reacting to a server
-	// sent websocket message
-	const message = encoder.encode(
+async function pushChangesSince({ database, ws, sinceVersion, serverSiteId }) {
+	const changes = await database.changesSince(sinceVersion);
+	await database.insertTrackedPeers(serverSiteId);
+	ws.send(
 		JSON.stringify({
 			type: 'update',
 			siteId: database.siteId,
@@ -37,7 +18,6 @@ async function pushOfflineChangesToServer(database, ws, version, serverSiteId) {
 			changes
 		})
 	);
-	ws.send(message);
 }
 
 function wsMessageHandler({
@@ -68,7 +48,7 @@ function wsMessageHandler({
 			}
 
 			if (type === 'connected') {
-				await pushOfflineChangesToServer(database, this, version, serverSiteId);
+				await pushChangesSince({ database, ws: this, sinceVersion: 0, serverSiteId });
 			}
 		}
 	};
@@ -113,25 +93,18 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 			Object.entries(commands).map(([name, fn]) => [
 				name,
 				async (args) => {
+					const ws = await wsPromise;
 					const db = await databasePromise;
 					const results = await fn(db.db, args);
 					q.set(await query(db.db));
 
-					const changes = await db.changesSince();
+					await pushChangesSince({
+						database: db,
+						ws,
+						sinceVersion: 0,
+						serverSiteId
+					});
 
-					await db.insertTrackedPeers(serverSiteId);
-
-					const ws = await wsPromise;
-					ws.send(
-						encoder.encode(
-							JSON.stringify({
-								type: 'update',
-								siteId: db.siteId,
-								version: await db.version(),
-								changes
-							})
-						)
-					);
 					return results;
 				}
 			])
