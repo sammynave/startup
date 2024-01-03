@@ -120,6 +120,7 @@ export class Sync {
 	private pull(clientSiteId: string) {
 		const result = this.versionOfTrackedPeer.get(clientSiteId);
 		const version = result?.version ?? 0;
+		console.log('pull');
 		this.send(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
 	}
 

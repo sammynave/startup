@@ -1,5 +1,4 @@
 <script lang="ts">
-	import FormInput from './../../../lib/components/ui/form/form-input.svelte';
 	import { nanoid } from 'nanoid';
 	import { db } from './sync-db-store.js';
 	import schemaContent from '$lib/sync/schema.sql?raw';
@@ -10,6 +9,7 @@
 	let newTodo = '';
 	let newTodont = '';
 	let online = false;
+	let num = 100;
 	const { store } = db({
 		schema: { name: 'schema.sql', schemaContent },
 		name: data.dbName,
@@ -70,21 +70,15 @@
 			},
 
 			loadEmUp: async (db) => {
-				console.log('gen statements');
-				const stmt = `INSERT INTO todos VALUES (?, ?, 0);`;
-				await db.tx(async (tx) => {
-					for (let i = 0; i < 30000; i++) {
-						console.log(`${i}/5000`);
-						const args = [nanoid(), `name-${i}`];
-						await tx.exec(stmt, args);
-						// statements.push(`INSERT INTO todos VALUES ('${nanoid()}', 'name-${i}', 0);`);
-					}
-				});
-
-				// console.log('done gen statements');
-				// console.log('starting inserts');
-				// await db.execMany(statements);
-				console.log('done inserts');
+				let vals = '';
+				const arr = Array.from(Array(num), (_, i) => i);
+				for (let i of arr) {
+					vals += ` ('${nanoid()}', 'name-${i}', 0),`;
+				}
+				vals = vals.slice(0, -1);
+				const stmt = await db.prepare(`INSERT INTO todos (id, content, complete) VALUES ${vals};`);
+				await stmt.run();
+				await stmt.finalize(null);
 				peers.requery();
 				me.requery();
 			}
@@ -119,7 +113,10 @@
 	{#if online}Online{:else}Offline{/if}
 </h1>
 
-<button on:click|preventDefault={async () => await todos.loadEmUp()}>load em up</button>
+<form on:submit|preventDefault={async () => await todos.loadEmUp()}>
+	<input type="number" bind:value={num} />
+	<button type="submit">load em up</button>
+</form>
 <div>todos count: {$count}</div>
 {#each $me as m}
 	<div>me: {m.site_id} {m.version}</div>

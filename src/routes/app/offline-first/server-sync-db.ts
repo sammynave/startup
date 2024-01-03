@@ -2,7 +2,6 @@ import initWasm, { DB } from '@vlcn.io/crsqlite-wasm';
 import wasmUrl from '@vlcn.io/crsqlite-wasm/crsqlite.wasm?url';
 
 const INSERT_CHANGES = `INSERT INTO crsql_changes VALUES (?, unhex(?), ?, ?, ?, ?, unhex(?), ?, ?)`;
-// const INSERT_TRACKED_PEERS =
 
 export class Database {
 	db: DB;

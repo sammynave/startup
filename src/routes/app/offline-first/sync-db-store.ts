@@ -46,6 +46,9 @@ function wsMessageHandler({
 			const { type, changes, siteId, version } = JSON.parse(m);
 
 			if ((type === 'update' && siteId !== clientSiteId) || type === 'pull') {
+				if (type === 'pull') {
+					console.log('pull');
+				}
 				await database.merge(changes);
 				await database.insertTrackedPeers(serverSiteId);
 
@@ -53,6 +56,7 @@ function wsMessageHandler({
 			}
 
 			if (type === 'connected') {
+				console.log('connected');
 				await pushChangesSince({ database, ws: this, sinceVersion: version, serverSiteId });
 			}
 		}
