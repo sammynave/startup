@@ -12,7 +12,7 @@ ON CONFLICT([site_id], [tag], [event])
 DO UPDATE SET version=excluded.version`;
 const SELECT_VERSION = `SELECT crsql_db_version() as version;`;
 const SELECT_NON_CLIENT_CHANGES = `SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-FROM crsql_changes WHERE site_id != unhex(:clientSiteId)`;
+FROM crsql_changes WHERE site_id != unhex(:clientSiteId) AND db_version >= :dbVersion`;
 const SELECT_VERSION_FROM_TRACKED_PEER = `SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`;
 
 // TODO: review https://github.com/vlcn-io/js/blob/main/packages/ws-server/src/DB.ts
@@ -124,9 +124,8 @@ export class Sync {
 	}
 
 	private push(clientSiteId: string) {
-		const changes = this.nonClientChanges.all({ clientSiteId });
-		this.insertTrackedPeersStatement.run(clientSiteId);
-
+		const result = this.versionOfTrackedPeer.get(clientSiteId);
+		const changes = this.nonClientChanges.all({ clientSiteId, dbVersion: result?.version ?? 0 });
 		const { version } = this.versionStatement.get();
 
 		if (changes.length) {
@@ -136,12 +135,17 @@ export class Sync {
 				version,
 				changes: changes.map((change) => Object.values(change))
 			});
-			this.send(message);
+			this.send(message, clientSiteId);
 		}
 	}
 
-	private send(message) {
+	private send(message, clientSiteId: string | undefined = undefined) {
 		if (this.ws.readyState === WebSocket.OPEN) {
+			// Only update if we send the message
+			/// might want an ACK from client before we do this
+			if (clientSiteId) {
+				this.insertTrackedPeersStatement.run(clientSiteId);
+			}
 			this.ws.send(message, { binary: true });
 		}
 	}

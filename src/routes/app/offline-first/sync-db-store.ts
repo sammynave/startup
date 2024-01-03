@@ -1,7 +1,6 @@
-import { browser } from '$app/environment';
 import { Database } from './server-sync-db';
 import { onDestroy } from 'svelte';
-import { readable, writable } from 'svelte/store';
+import { writable } from 'svelte/store';
 
 function wsErrorHandler(error: Event) {
 	console.error(error);
@@ -9,15 +8,21 @@ function wsErrorHandler(error: Event) {
 
 async function pushChangesSince({ database, ws, sinceVersion, serverSiteId }) {
 	const changes = await database.changesSince(sinceVersion);
-	await database.insertTrackedPeers(serverSiteId);
-	ws.send(
-		JSON.stringify({
-			type: 'update',
-			siteId: database.siteId,
-			version: await database.version(),
-			changes
-		})
-	);
+
+	// If do not update version and
+	// do not attempt to send to server
+	// if websocket is not open
+	if (ws.readyState === WebSocket.OPEN) {
+		await database.insertTrackedPeers(serverSiteId);
+		ws.send(
+			JSON.stringify({
+				type: 'update',
+				siteId: database.siteId,
+				version: await database.version(),
+				changes
+			})
+		);
+	}
 }
 
 function wsMessageHandler({
@@ -68,10 +73,6 @@ async function setupWs({ url, database }: { url: string; database: Promise<Datab
 }
 
 export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
-	if (!browser) {
-		// No SSR
-		return { store: () => readable([]) };
-	}
 	const databasePromise = Database.load({ schema, name });
 	const wsPromise = setupWs({ url: wsUrl, database: databasePromise });
 	const store = ({ query, commands }) => {
@@ -98,10 +99,11 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 					const results = await fn(db.db, args);
 					q.set(await query(db.db));
 
+					const [[sinceVersion]] = await db.lastTrackedChangeFor(serverSiteId);
 					await pushChangesSince({
 						database: db,
 						ws,
-						sinceVersion: 0,
+						sinceVersion,
 						serverSiteId
 					});
 

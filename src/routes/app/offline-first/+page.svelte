@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { nanoid } from 'nanoid/non-secure';
+	import FormInput from './../../../lib/components/ui/form/form-input.svelte';
+	import { nanoid } from 'nanoid';
 	import { db } from './sync-db-store.js';
 	import schemaContent from '$lib/sync/schema.sql?raw';
+	import { streamToString } from 'testcontainers/build/common/streams.js';
 
 	export let data;
 
@@ -32,8 +34,22 @@
 		},
 		identifier: 'peers'
 	});
+	const count = store({
+		query: async (db) => {
+			const [{ count }] = await db.execO('SELECT count(*) as count FROM todos');
+			return count;
+		},
+		commands: {
+			requery: async (db) => {
+				console.log('requerying count');
+			}
+		}
+	});
 	const todos = store({
-		query: async (db) => await db.execO('SELECT * FROM todos'),
+		query: async (db) => {
+			const todos = await db.execO('SELECT * FROM todos');
+			return todos;
+		},
 		commands: {
 			insert: async (db, name) => {
 				await db.exec('INSERT INTO todos VALUES (?, ?, ?)', [nanoid(), name, 0]);
@@ -51,6 +67,26 @@
 				await db.exec('DELETE FROM todos WHERE id = ?', [id]);
 				await peers.requery();
 				await me.requery();
+			},
+
+			loadEmUp: async (db) => {
+				console.log('gen statements');
+				const stmt = `INSERT INTO todos VALUES (?, ?, 0);`;
+				await db.tx(async (tx) => {
+					for (let i = 0; i < 30000; i++) {
+						console.log(`${i}/5000`);
+						const args = [nanoid(), `name-${i}`];
+						await tx.exec(stmt, args);
+						// statements.push(`INSERT INTO todos VALUES ('${nanoid()}', 'name-${i}', 0);`);
+					}
+				});
+
+				// console.log('done gen statements');
+				// console.log('starting inserts');
+				// await db.execMany(statements);
+				console.log('done inserts');
+				peers.requery();
+				me.requery();
 			}
 		},
 		identifier: 'todos'
@@ -83,6 +119,8 @@
 	{#if online}Online{:else}Offline{/if}
 </h1>
 
+<button on:click|preventDefault={async () => await todos.loadEmUp()}>load em up</button>
+<div>todos count: {$count}</div>
 {#each $me as m}
 	<div>me: {m.site_id} {m.version}</div>
 {/each}
@@ -139,38 +177,3 @@
 		{/each}
 	</div>
 </div>
-
-<h1 class="font-semibold">How this works</h1>
-<ol class="list-decimal ml-4">
-	<li>
-		Setup (catch Server up, catch the Client A up)
-		<ol class="list-decimal ml-4">
-			<li>initialize and/or open Client A DB</li>
-			<li>Client A connect web socket (sending up clientAVersion and clientASiteID)</li>
-			<li>Server queries for all updates >= clientAVersion and != clientASiteID</li>
-			<li>Server `push` message with results to Client A</li>
-			<li>Client A merges results and "catches up" on all changes</li>
-			<li>Client A `push` all changes >= serverVersion and == clientASiteId to Server</li>
-			<li>Server merges and `push` changes to Client B and Client C</li>
-			<li>Client B merges change</li>
-			<li>Client C merges change</li>
-		</ol>
-	</li>
-	<li>
-		Normal flow
-		<ol class="list-decimal ml-4">
-			<li>Client A makes update</li>
-			<li>`push` update to server</li>
-			<li>server merges change</li>
-			<li>server `push` update to Client B and Client C</li>
-			<li>Client B merges change</li>
-			<li>Client C merges change</li>
-		</ol>
-	</li>
-	<li>
-		Database migrations
-		<ol class="list-decimal ml-4">
-			<li>???</li>
-		</ol>
-	</li>
-</ol>

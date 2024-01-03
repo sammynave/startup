@@ -36,7 +36,8 @@ export class Database {
 
 	async merge(changes) {
 		await this.db.tx(async (tx) => {
-			changes.forEach(async (change) => {
+			changes.forEach(async (change, i) => {
+				console.log(`merging ${i} of ${changes.length}`);
 				await tx.exec(INSERT_CHANGES, change);
 			});
 		});
@@ -58,5 +59,11 @@ export class Database {
 					  FROM crsql_changes WHERE db_version >= ?`,
 			[since]
 		);
+	}
+
+	async lastTrackedChangeFor(siteId) {
+		return await this.db.exec(`SELECT version FROM crsql_tracked_peers WHERE hex(site_id) = ?`, [
+			siteId
+		]);
 	}
 }
