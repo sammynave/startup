@@ -36,6 +36,13 @@ function wsMessageHandler({
 	serverSiteId: string;
 	identifier?: string;
 }) {
+	// TODO
+	// TODO
+	// TODO
+	// `update` needs to be a subscription type structure. we want to pass in an `update` function for for each
+	//  `store` we register but we don't want to register multiple wsMessageHandlers
+	// TODO
+	// TODO
 	return async function (event: Event) {
 		// Are we over subscribing here? every `store` attaches an event listener
 		// maybe there's some kind of queue or something we can use to only apply
