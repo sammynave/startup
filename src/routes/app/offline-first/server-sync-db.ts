@@ -35,10 +35,13 @@ export class Database {
 
 	async merge(changes) {
 		await this.db.tx(async (tx) => {
-			changes.forEach(async (change, i) => {
-				console.log(`merging ${i} of ${changes.length}`);
-				await tx.exec(INSERT_CHANGES, change);
-			});
+			const execPromises = [];
+
+			for (const change of changes) {
+				execPromises.push(tx.exec(INSERT_CHANGES, change));
+			}
+
+			await Promise.all(execPromises);
 		});
 	}
 
@@ -55,7 +58,7 @@ export class Database {
 	async changesSince(since = 0) {
 		return await this.db.exec(
 			`SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-					  FROM crsql_changes WHERE db_version >= ?`,
+					  FROM crsql_changes WHERE db_version > ?`,
 			[since]
 		);
 	}

@@ -1,5 +1,5 @@
+import { nanoid } from 'nanoid';
 import { Database } from './server-sync-db';
-import { onDestroy } from 'svelte';
 import { writable } from 'svelte/store';
 
 function wsErrorHandler(error: Event) {
@@ -27,23 +27,11 @@ async function pushChangesSince({ database, ws, sinceVersion, serverSiteId }) {
 
 function wsMessageHandler({
 	database,
-	updates,
-	serverSiteId,
-	identifier
+	serverSiteId
 }: {
 	database: Database;
-	updates: Set<() => Promise<void>>;
 	serverSiteId: string;
-	identifier?: string;
 }) {
-	// TODO
-	// TODO
-	// TODO
-	// `update` needs to be a subscription type structure. we want to pass in an `update` function for for each
-	//  `store` we register but we don't want to register multiple wsMessageHandlers
-	// TODO
-	// TODO
-
 	return async function (event: Event) {
 		// Are we over subscribing here? every `store` attaches an event listener
 		// maybe there's some kind of queue or something we can use to only apply
@@ -54,17 +42,8 @@ function wsMessageHandler({
 			const { type, changes, siteId, version } = JSON.parse(m);
 
 			if ((type === 'update' && siteId !== clientSiteId) || type === 'pull') {
-				if (type === 'pull') {
-					console.log('pull');
-				}
 				await database.merge(changes);
 				await database.insertTrackedPeers(serverSiteId);
-
-				const updatePromises = [];
-				for (const update of updates) {
-					updatePromises.push(update());
-				}
-				await Promise.all(updatePromises);
 			}
 
 			if (type === 'connected') {
@@ -76,7 +55,7 @@ function wsMessageHandler({
 }
 
 // TODO: probably need re-connect/retry logic if WS server closes connection
-async function setupWs({ url, database }: { url: string; database: Promise<Database> }) {
+export async function setupWs({ url, database }: { url: string; database: Promise<Database> }) {
 	const db = await database;
 	const u = new URL(url);
 	const features = JSON.parse(u.searchParams.get('features') as string);
@@ -88,28 +67,50 @@ async function setupWs({ url, database }: { url: string; database: Promise<Datab
 	return ws;
 }
 
-export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
-	const databasePromise = Database.load({ schema, name });
-	const wsPromise = setupWs({ url: wsUrl, database: databasePromise });
-	let listenerAdded = false;
-	const updates = new Set([]);
-	const store = ({ query, commands }) => {
+export function db({ databasePromise, wsPromise, serverSiteId, name }) {
+	const self = nanoid();
+	let wsListenerAdded = false;
+	let channelListenerAdded = false;
+	const channelSubscribers = new Set();
+	const channel = 'BroadcastChannel' in globalThis ? new globalThis.BroadcastChannel(name) : null;
+	// TODO - rename `query` to `view`
+	const store = ({ watch, query, commands = {} }) => {
 		const q = writable([]);
 		databasePromise.then(async (database) => {
 			const ws = await wsPromise;
-			const update = async () => q.set(await query(database.db));
-			// Maybe this should register the listener in a store,
-			// we may be over subscribing since we add a listener with
-			// every `store`
-			updates.add(update);
-			if (listenerAdded === false) {
-				ws.addEventListener(
-					'message',
-					wsMessageHandler({ database, identifier, serverSiteId, updates })
-				);
-				listenerAdded = true;
+			if (wsListenerAdded === false) {
+				ws.addEventListener('message', wsMessageHandler({ database, serverSiteId }));
+				wsListenerAdded = true;
 			}
-			await update();
+
+			// Update other tabs
+			channelSubscribers.add(async (event: MessageEvent) => {
+				if (watch.some((table) => event.data.tables.includes(table))) {
+					await q.set(await query(database.db));
+				}
+			});
+
+			if (channelListenerAdded === false) {
+				channel?.addEventListener('message', async (event) => {
+					for (const update of channelSubscribers) {
+						await update(event);
+					}
+				});
+				channelListenerAdded = true;
+			}
+
+			// Could we do some fine-grained updates here with rowid?
+			// svelte 5 might make this easier/possible. For now,
+			// just re-calculate view
+			database.db.onUpdate(async (type, dbName, tblName, rowid) => {
+				if (watch.includes(tblName)) {
+					// Force other tabs/windows to refresh their views when
+					// when the db changes in another window.
+					channel?.postMessage({ tables: [tblName], sender: self });
+				}
+			});
+
+			await q.set(await query(database.db));
 		});
 
 		const cmds = Object.fromEntries(
@@ -119,9 +120,9 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 					const ws = await wsPromise;
 					const db = await databasePromise;
 					const results = await fn(db.db, args);
-					q.set(await query(db.db));
 
 					const [[sinceVersion]] = await db.lastTrackedChangeFor(serverSiteId);
+
 					await pushChangesSince({
 						database: db,
 						ws,
@@ -129,6 +130,15 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 						serverSiteId
 					});
 
+					/*
+						TODO: investigate why this is needed.
+						in some cases the syncing fails
+						example - server is offline, offline changes made to private browser WindowA,
+						offline changes made to public WindowA, and offline changes to public WindowB
+						do not always sync up when the server reconnects.
+						seems like an off by one issue
+					*/
+					channel?.postMessage({ tables: watch, sender: self });
 					return results;
 				}
 			])
@@ -140,10 +150,8 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 		};
 	};
 
-	onDestroy(async () => {
-		const ws = await wsPromise;
-		ws.close();
-	});
-
-	return { store };
+	return {
+		store,
+		database: new Promise((r) => databasePromise.then((db) => r(db)))
+	};
 }

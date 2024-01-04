@@ -12,7 +12,7 @@ ON CONFLICT([site_id], [tag], [event])
 DO UPDATE SET version=excluded.version`;
 const SELECT_VERSION = `SELECT crsql_db_version() as version;`;
 const SELECT_NON_CLIENT_CHANGES = `SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
-FROM crsql_changes WHERE site_id != unhex(:clientSiteId) AND db_version >= :dbVersion`;
+FROM crsql_changes WHERE site_id != unhex(:clientSiteId) AND db_version > :dbVersion`;
 const SELECT_VERSION_FROM_TRACKED_PEER = `SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`;
 
 // TODO: review https://github.com/vlcn-io/js/blob/main/packages/ws-server/src/DB.ts
@@ -104,7 +104,7 @@ export class Sync {
 			const fromSiteId = parsed.siteId;
 			this.insertTrackedPeersStatement.run(fromSiteId);
 
-			await this.redisClient.publish(this.stream, data);
+			this.redisClient.publish(this.stream, data);
 		}
 	}
 
@@ -120,7 +120,6 @@ export class Sync {
 	private pull(clientSiteId: string) {
 		const result = this.versionOfTrackedPeer.get(clientSiteId);
 		const version = result?.version ?? 0;
-		console.log('pull');
 		this.send(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
 	}
 
