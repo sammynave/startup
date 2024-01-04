@@ -27,12 +27,12 @@ async function pushChangesSince({ database, ws, sinceVersion, serverSiteId }) {
 
 function wsMessageHandler({
 	database,
-	update,
+	updates,
 	serverSiteId,
 	identifier
 }: {
 	database: Database;
-	update: () => Promise<void>;
+	updates: Set<() => Promise<void>>;
 	serverSiteId: string;
 	identifier?: string;
 }) {
@@ -43,10 +43,11 @@ function wsMessageHandler({
 	//  `store` we register but we don't want to register multiple wsMessageHandlers
 	// TODO
 	// TODO
+
 	return async function (event: Event) {
 		// Are we over subscribing here? every `store` attaches an event listener
 		// maybe there's some kind of queue or something we can use to only apply
-		// appropriate udpates
+		// appropriate updates
 		if (typeof event.data !== 'string') {
 			const clientSiteId = database.siteId;
 			const m = await event.data.text();
@@ -59,7 +60,11 @@ function wsMessageHandler({
 				await database.merge(changes);
 				await database.insertTrackedPeers(serverSiteId);
 
-				await update();
+				const updatePromises = [];
+				for (const update of updates) {
+					updatePromises.push(update());
+				}
+				await Promise.all(updatePromises);
 			}
 
 			if (type === 'connected') {
@@ -86,6 +91,8 @@ async function setupWs({ url, database }: { url: string; database: Promise<Datab
 export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 	const databasePromise = Database.load({ schema, name });
 	const wsPromise = setupWs({ url: wsUrl, database: databasePromise });
+	let listenerAdded = false;
+	const updates = new Set([]);
 	const store = ({ query, commands }) => {
 		const q = writable([]);
 		databasePromise.then(async (database) => {
@@ -94,10 +101,14 @@ export function db({ schema, name, wsUrl, serverSiteId, identifier }) {
 			// Maybe this should register the listener in a store,
 			// we may be over subscribing since we add a listener with
 			// every `store`
-			ws.addEventListener(
-				'message',
-				wsMessageHandler({ database, update, identifier, serverSiteId })
-			);
+			updates.add(update);
+			if (listenerAdded === false) {
+				ws.addEventListener(
+					'message',
+					wsMessageHandler({ database, identifier, serverSiteId, updates })
+				);
+				listenerAdded = true;
+			}
 			await update();
 		});
 
