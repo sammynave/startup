@@ -109,6 +109,12 @@ export class Sync {
 
 			this.redisClient.publish(this.stream, data);
 		}
+
+		if (parsed.type === 'connected') {
+			console.log('connected', parsed);
+			this.pull(parsed.clientSiteId);
+			this.push(parsed.clientSiteId);
+		}
 	}
 
 	private merge(changes) {

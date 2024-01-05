@@ -110,14 +110,18 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 	databasePromise.then(async (database) => {
 		const ws = await wsPromise;
 		globalThis.addEventListener('online', async (event) => {
-			const result = await database.lastTrackedChangeFor(serverSiteId, 1);
-			const trackedVersion = result?.[0]?.[0] ?? 0;
-			await pushChangesSince({
-				database,
-				ws,
-				sinceVersion: trackedVersion,
-				serverSiteId
-			});
+			// Request update
+			ws.send(JSON.stringify({ type: 'connected', siteId: database.siteId }));
+
+			// // Send update
+			// const result = await database.lastTrackedChangeFor(serverSiteId, 1);
+			// const trackedVersion = result?.[0]?.[0] ?? 0;
+			// await pushChangesSince({
+			// 	database,
+			// 	ws,
+			// 	sinceVersion: trackedVersion,
+			// 	serverSiteId
+			// });
 		});
 	});
 
