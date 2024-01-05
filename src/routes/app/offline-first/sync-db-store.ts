@@ -2,6 +2,19 @@ import { nanoid } from 'nanoid';
 import { Database } from './server-sync-db';
 import { writable } from 'svelte/store';
 
+const raf = globalThis.requestAnimationFrame;
+function throttle(fn) {
+	// could be setTimeout or raf id
+	let id = null;
+
+	return (...args) => {
+		if (id === null) {
+			fn(...args);
+			id = typeof raf === 'undefined' ? setTimeout(() => (id = null), 60) : raf(() => (id = null));
+		}
+	};
+}
+
 function wsErrorHandler(error: Event) {
 	console.error(error);
 }
@@ -80,6 +93,19 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 	let channelListenerAdded = false;
 	const channelSubscribers = new Set();
 	const channel = 'BroadcastChannel' in globalThis ? new globalThis.BroadcastChannel(name) : null;
+	const tablesToRefresh = new Set();
+	const updateTabs = throttle(() => {
+		const tables = [];
+		for (const table of tablesToRefresh) {
+			tables.push(table);
+			tablesToRefresh.delete(table);
+		}
+
+		if (tables.length) {
+			channel?.postMessage({ tables, sender: self });
+		}
+	});
+
 	const repo = ({ watch, view, commands = {} }) => {
 		const q = writable([]);
 		databasePromise.then(async (database) => {
@@ -110,9 +136,8 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 			// just re-calculate view
 			database.db.onUpdate(async (type, dbName, tblName, rowid) => {
 				if (watch.includes(tblName)) {
-					// Force other tabs/windows to refresh their views when
-					// // when the db changes in another window.
-					channel?.postMessage({ tables: [tblName], sender: self });
+					tablesToRefresh.add(tblName);
+					updateTabs();
 				}
 			});
 

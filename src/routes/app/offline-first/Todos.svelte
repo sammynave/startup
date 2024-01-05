@@ -13,7 +13,7 @@
 		view: async (db) => {
 			// TODO - this gets triggered a lot
 			// Maybe we can batch updates in the onUpdate trigger
-			console.log('refreshing todos view');
+			// console.log('refreshing todos view');
 			const todos = await db.execO('SELECT * FROM todos');
 			return todos;
 		},
