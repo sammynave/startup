@@ -27,15 +27,17 @@ async function pushChangesSince({ database, ws, sinceVersion, serverSiteId }) {
 	// if websocket is not open
 	if (ws.readyState === WebSocket.OPEN) {
 		const version = await database.version();
-		await database.insertTrackedPeers(serverSiteId, version, 1);
-		ws.send(
-			JSON.stringify({
-				type: 'update',
-				siteId: database.siteId,
-				version,
-				changes
-			})
-		);
+		if (navigator.onLine) {
+			await database.insertTrackedPeers(serverSiteId, version, 1);
+			ws.send(
+				JSON.stringify({
+					type: 'update',
+					siteId: database.siteId,
+					version,
+					changes
+				})
+			);
+		}
 	}
 }
 
@@ -104,6 +106,19 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 		if (tables.length) {
 			channel?.postMessage({ tables, sender: self });
 		}
+	});
+	databasePromise.then(async (database) => {
+		const ws = await wsPromise;
+		globalThis.addEventListener('online', async (event) => {
+			const result = await database.lastTrackedChangeFor(serverSiteId, 1);
+			const trackedVersion = result?.[0]?.[0] ?? 0;
+			await pushChangesSince({
+				database,
+				ws,
+				sinceVersion: trackedVersion,
+				serverSiteId
+			});
+		});
 	});
 
 	const repo = ({ watch, view, commands = {} }) => {
