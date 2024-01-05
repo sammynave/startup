@@ -5,6 +5,7 @@ import { Chat as ChatStreams } from './features/redis-streams/chat.js';
 import { Chat as ChatPubSub } from './features/redis-pub-sub/chat.js';
 import type { ExtendedWebSocket } from '../../../../vite-plugins/vite-plugin-svelte-kit-integrated-websocket-server';
 import { auth } from '../lucia';
+import { Sync } from './features/offline/sync';
 
 const FEATURE_STRATEGIES = {
 	chat: {
@@ -14,6 +15,9 @@ const FEATURE_STRATEGIES = {
 	presence: {
 		'redis-streams': PresenceStreams,
 		'redis-pub-sub': PresencePubSub
+	},
+	offline: {
+		sync: Sync
 	}
 };
 
@@ -21,6 +25,8 @@ type Feature = {
 	type: keyof typeof FEATURE_STRATEGIES;
 	strategy: keyof (typeof FEATURE_STRATEGIES)[keyof typeof FEATURE_STRATEGIES];
 	stream: string;
+	clientSiteId?: string;
+	clientVersion?: number;
 };
 
 function getFeatureFor(
@@ -58,7 +64,12 @@ export async function hooksConnectionHandler(ws: ExtendedWebSocket, request: Inc
 			ws.close(1008, `No stream specified for ${feature.type}`);
 			throw new Error(`Invalid feature ${feature.type} - no stream specified`);
 		}
-
-		await getFeatureFor(feature.type, feature.strategy).init({ ws, stream: feature.stream });
+		const f = await getFeatureFor(feature.type, feature.strategy);
+		await f.init({
+			ws,
+			stream: feature.stream,
+			clientSiteId: feature.clientSiteId,
+			clientVersion: feature.clientVersion
+		});
 	});
 }

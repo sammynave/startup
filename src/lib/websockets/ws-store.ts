@@ -48,7 +48,7 @@ export function wsStore({ url }: { url: string }) {
 
 		// Generic send, can be customized/extended from custom store
 		// see `send` in `chat-store` for example
-		send(message: string) {
+		send(message: string | ArrayBufferLike | Blob | ArrayBufferView) {
 			ws?.send(message);
 		}
 	};
