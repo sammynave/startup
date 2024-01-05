@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { nanoid } from 'nanoid';
 	import { db } from './sync-db-store';
+	import Input from '$lib/components/ui/input/input.svelte';
 
 	export let dbConfig;
 
@@ -130,7 +131,7 @@
 					newTodo = '';
 				}}
 			>
-				<label>new todo<input type="text" bind:value={newTodo} /></label>
+				<label>new todo<Input type="text" bind:value={newTodo} /></label>
 				<button type="submit">create</button>
 			</form>
 
@@ -152,7 +153,7 @@
 					newTodont = '';
 				}}
 			>
-				<label>new todont<input type="text" bind:value={newTodont} /></label>
+				<label>new todont<Input type="text" bind:value={newTodont} /></label>
 				<button type="submit">create</button>
 			</form>
 
