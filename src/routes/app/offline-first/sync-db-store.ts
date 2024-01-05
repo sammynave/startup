@@ -48,7 +48,8 @@ function wsMessageHandler({
 			}
 
 			if (type === 'connected') {
-				const [[trackedVersion]] = await database.lastTrackedChangeFor(serverSiteId, 1);
+				const result = await database.lastTrackedChangeFor(serverSiteId, 1);
+				const trackedVersion = result?.[0]?.[0] ?? 0;
 				await pushChangesSince({
 					database,
 					ws: this,
@@ -127,8 +128,8 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 					const db = await databasePromise;
 					const results = await fn(db.db, args);
 
-					const [[sinceVersion]] = await db.lastTrackedChangeFor(serverSiteId, 1);
-
+					const result = await db.lastTrackedChangeFor(serverSiteId, 1);
+					const sinceVersion = result?.[0]?.[0] ?? 0;
 					await pushChangesSince({
 						database: db,
 						ws,

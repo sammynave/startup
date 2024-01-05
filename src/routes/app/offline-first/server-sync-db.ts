@@ -29,7 +29,8 @@ export class Database {
 	}
 
 	async version() {
-		const [[version]] = await this.db.exec(`SELECT crsql_db_version();`);
+		const result = await this.db.exec(`SELECT crsql_db_version();`);
+		const version = result?.[0]?.[0] ?? 0;
 		return version;
 	}
 
