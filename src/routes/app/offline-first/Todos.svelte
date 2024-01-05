@@ -3,30 +3,11 @@
 	import { db } from './sync-db-store';
 
 	export let dbConfig;
-	export let name = '';
 
 	let newTodo = '';
 	let newTodont = '';
 	let num = 100;
 	const { repo } = db(dbConfig);
-	const me = repo({
-		watch: ['todos'],
-		view: async (db) =>
-			await db.execO('SELECT hex(crsql_site_id()) as site_id, crsql_db_version() as version')
-	});
-	const peers = repo({
-		watch: ['todos'],
-		view: async (db) => {
-			return await db.execO('SELECT hex(site_id) as site_id, version FROM crsql_tracked_peers');
-		}
-	});
-	const count = repo({
-		watch: ['todos'],
-		view: async (db) => {
-			const [{ count }] = await db.execO('SELECT count(*) as count FROM todos');
-			return count;
-		}
-	});
 	const todos = repo({
 		watch: ['todos'],
 		view: async (db) => {
@@ -78,69 +59,110 @@
 			}
 		}
 	});
+
+	const me = repo({
+		watch: ['todos', 'todonts'],
+		view: async (db) =>
+			await db.execO('SELECT hex(crsql_site_id()) as site_id, crsql_db_version() as version')
+	});
+
+	const peers = repo({
+		watch: ['crsql_tracked_peers'],
+		view: async (db) =>
+			await db.execO('SELECT hex(site_id) as site_id, version, event FROM crsql_tracked_peers')
+	});
+
+	const todoCount = repo({
+		watch: ['todos'],
+		view: async (db) => {
+			const [{ count }] = await db.execO('SELECT count(*) as count FROM todos');
+			return count;
+		}
+	});
+	const todontCount = repo({
+		watch: ['todonts'],
+		view: async (db) => {
+			const [{ count }] = await db.execO('SELECT count(*) as count FROM todonts');
+			return count;
+		}
+	});
 </script>
 
-<form on:submit|preventDefault={async () => await todos.loadEmUp()}>
-	<input type="number" bind:value={num} />
-	<button type="submit">load em up</button>
-</form>
-<form on:submit|preventDefault={async () => await todos.deleteEm()}>
-	<button type="submit">delete em</button>
-</form>
-<div>todos count: {$count}</div>
-{#each $me as m}
-	<div>me: {m.site_id} {m.version}</div>
-{/each}
-<div>server: {dbConfig.serverSiteId}</div>
-{#each $peers as peer}
-	<div>{peer.site_id} {peer.version}</div>
-{/each}
-<div class="flex gap-10">
+<div class="pt-4 pb-4 border-t">
+	<form on:submit|preventDefault={async () => await todos.loadEmUp()}>
+		<input type="number" bind:value={num} />
+		<button type="submit">load em up</button>
+	</form>
+	<form on:submit|preventDefault={async () => await todos.deleteEm()}>
+		<button type="submit">delete em</button>
+	</form>
 	<div>
-		<p>todos</p>
-		<form
-			on:submit|preventDefault={async () => {
-				await todos.insert(newTodo);
-				newTodo = '';
-			}}
-		>
-			<label>new todo<input type="text" bind:value={newTodo} /></label>
-			<button type="submit">create</button>
-		</form>
-
-		{#each $todos as todo}
-			<div>
-				<input type="checkbox" checked={todo.complete} on:click={() => todos.toggle(todo.id)} />
-				{todo.id}
-				{todo.content}
-				<button on:click|preventDefault={() => todos.delete(todo.id)}>delete</button>
+		<div>server id: {dbConfig.serverSiteId}</div>
+	</div>
+	<div class="flex">
+		{#each $me as m}
+			<div class="pt-2">
+				<div>me: {m.site_id}</div>
+				<div>version: {m.version}</div>
 			</div>
 		{/each}
 	</div>
-
-	<div>
-		<p>todonts</p>
-		<form
-			on:submit|preventDefault={async () => {
-				await todonts.insert(newTodont);
-				newTodont = '';
-			}}
-		>
-			<label>new todont<input type="text" bind:value={newTodont} /></label>
-			<button type="submit">create</button>
-		</form>
-
-		{#each $todonts as todont}
+	{#each $peers as peer}
+		<div class="pt-2">
+			<div>peer: {peer.site_id}</div>
 			<div>
-				<input
-					type="checkbox"
-					checked={todont.complete}
-					on:click={() => todonts.toggle(todont.id)}
-				/>
-				{todont.id}
-				{todont.content}
-				<button on:click|preventDefault={() => todonts.delete(todont.id)}>delete</button>
+				tracked version: {peer.version}
+				{#if peer.event === 0}received{:else}sent{/if}
 			</div>
-		{/each}
+		</div>
+	{/each}
+	<div class="pt-4 flex gap-10">
+		<div>
+			<p>todos: {$todoCount}</p>
+			<form
+				on:submit|preventDefault={async () => {
+					await todos.insert(newTodo);
+					newTodo = '';
+				}}
+			>
+				<label>new todo<input type="text" bind:value={newTodo} /></label>
+				<button type="submit">create</button>
+			</form>
+
+			{#each $todos as todo}
+				<div>
+					<input type="checkbox" checked={todo.complete} on:click={() => todos.toggle(todo.id)} />
+					{todo.id}
+					{todo.content}
+					<button on:click|preventDefault={() => todos.delete(todo.id)}>delete</button>
+				</div>
+			{/each}
+		</div>
+
+		<div>
+			<p>todonts {$todontCount}</p>
+			<form
+				on:submit|preventDefault={async () => {
+					await todonts.insert(newTodont);
+					newTodont = '';
+				}}
+			>
+				<label>new todont<input type="text" bind:value={newTodont} /></label>
+				<button type="submit">create</button>
+			</form>
+
+			{#each $todonts as todont}
+				<div>
+					<input
+						type="checkbox"
+						checked={todont.complete}
+						on:click={() => todonts.toggle(todont.id)}
+					/>
+					{todont.id}
+					{todont.content}
+					<button on:click|preventDefault={() => todonts.delete(todont.id)}>delete</button>
+				</div>
+			{/each}
+		</div>
 	</div>
 </div>

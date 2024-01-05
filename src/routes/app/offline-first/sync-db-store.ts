@@ -80,7 +80,6 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 	let channelListenerAdded = false;
 	const channelSubscribers = new Set();
 	const channel = 'BroadcastChannel' in globalThis ? new globalThis.BroadcastChannel(name) : null;
-	// TODO - rename `view` to `view`
 	const repo = ({ watch, view, commands = {} }) => {
 		const q = writable([]);
 		databasePromise.then(async (database) => {
