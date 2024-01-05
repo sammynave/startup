@@ -121,6 +121,12 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 		// TODO
 		// TODO
 
+		/*
+			when we go offline, should we close the WS connection?
+			then open it back up when come back online?
+			need to move the WS instantiation logic around...
+		*/
+
 		const ws = await wsPromise;
 		globalThis.addEventListener('online', async (event) => {
 			ws.send(JSON.stringify({ type: 'connected', siteId: database.siteId }));
