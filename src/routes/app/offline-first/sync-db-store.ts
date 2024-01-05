@@ -108,20 +108,22 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 		}
 	});
 	databasePromise.then(async (database) => {
+		// NOTE: this is really hard to test locally since you can be offline but still hit the dev server.
+		// But it works when you are offline then go back online!
+
+		// TODO
+		// TODO
+		// TODO
+		// TODO
+		// We need more logic to handle when the server is down/unreachable but the client isn't offline.
+		// TODO
+		// TODO
+		// TODO
+		// TODO
+
 		const ws = await wsPromise;
 		globalThis.addEventListener('online', async (event) => {
-			// Request update
 			ws.send(JSON.stringify({ type: 'connected', siteId: database.siteId }));
-
-			// // Send update
-			// const result = await database.lastTrackedChangeFor(serverSiteId, 1);
-			// const trackedVersion = result?.[0]?.[0] ?? 0;
-			// await pushChangesSince({
-			// 	database,
-			// 	ws,
-			// 	sinceVersion: trackedVersion,
-			// 	serverSiteId
-			// });
 		});
 	});
 
