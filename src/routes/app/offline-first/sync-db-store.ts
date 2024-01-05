@@ -111,7 +111,7 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 			database.db.onUpdate(async (type, dbName, tblName, rowid) => {
 				if (watch.includes(tblName)) {
 					// Force other tabs/windows to refresh their views when
-					// when the db changes in another window.
+					// // when the db changes in another window.
 					channel?.postMessage({ tables: [tblName], sender: self });
 				}
 			});
@@ -136,15 +136,6 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 						serverSiteId
 					});
 
-					/*
-						TODO: investigate why this is needed.
-						in some cases the syncing fails
-						example - server is offline, offline changes made to private browser WindowA,
-						offline changes made to public WindowA, and offline changes to public WindowB
-						do not always sync up when the server reconnects.
-						seems like an off by one issue
-					*/
-					channel?.postMessage({ tables: watch, sender: self });
 					return results;
 				}
 			])
