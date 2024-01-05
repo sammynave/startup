@@ -45,13 +45,13 @@ export class Database {
 		});
 	}
 
-	async insertTrackedPeers(serverSiteId) {
+	async insertTrackedPeers(serverSiteId, version, event) {
 		await this.db.exec(
 			`INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-				    VALUES (unhex(?), crsql_db_version(), 0, 0)
+				    VALUES (unhex(?), ?, 0, ?)
 				    ON CONFLICT([site_id], [tag], [event])
 				    DO UPDATE SET version=excluded.version`,
-			[serverSiteId]
+			[serverSiteId, version, event]
 		);
 	}
 
@@ -63,9 +63,10 @@ export class Database {
 		);
 	}
 
-	async lastTrackedChangeFor(siteId) {
-		return await this.db.exec(`SELECT version FROM crsql_tracked_peers WHERE hex(site_id) = ?`, [
-			siteId
-		]);
+	async lastTrackedChangeFor(siteId, event) {
+		return await this.db.exec(
+			`SELECT IFNULL(version, 0) version FROM crsql_tracked_peers WHERE hex(site_id) = ? AND event = ?`,
+			[siteId, event]
+		);
 	}
 }

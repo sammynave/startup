@@ -7,30 +7,29 @@
 
 	let newTodo = '';
 	let newTodont = '';
-	let online = false;
 	let num = 100;
-	const { store, database } = db(dbConfig);
-	const me = store({
+	const { repo } = db(dbConfig);
+	const me = repo({
 		watch: ['todos'],
-		query: async (db) =>
+		view: async (db) =>
 			await db.execO('SELECT hex(crsql_site_id()) as site_id, crsql_db_version() as version')
 	});
-	const peers = store({
+	const peers = repo({
 		watch: ['todos'],
-		query: async (db) => {
+		view: async (db) => {
 			return await db.execO('SELECT hex(site_id) as site_id, version FROM crsql_tracked_peers');
 		}
 	});
-	const count = store({
+	const count = repo({
 		watch: ['todos'],
-		query: async (db) => {
+		view: async (db) => {
 			const [{ count }] = await db.execO('SELECT count(*) as count FROM todos');
 			return count;
 		}
 	});
-	const todos = store({
+	const todos = repo({
 		watch: ['todos'],
-		query: async (db) => {
+		view: async (db) => {
 			const todos = await db.execO('SELECT * FROM todos');
 			return todos;
 		},
@@ -64,9 +63,9 @@
 		}
 	});
 
-	const todonts = store({
+	const todonts = repo({
 		watch: ['todonts'],
-		query: async (db) => await db.execO('SELECT * FROM todonts'),
+		view: async (db) => await db.execO('SELECT * FROM todonts'),
 		commands: {
 			insert: async (db, name) => {
 				await db.exec('INSERT INTO todonts VALUES (?, ?, ?)', [nanoid(), name, 0]);
@@ -80,11 +79,6 @@
 		}
 	});
 </script>
-
-<svelte:window bind:online />
-<h1>
-	{#if online}Online{:else}Offline{/if}
-</h1>
 
 <form on:submit|preventDefault={async () => await todos.loadEmUp()}>
 	<input type="number" bind:value={num} />

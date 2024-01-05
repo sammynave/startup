@@ -13,12 +13,13 @@ async function pushChangesSince({ database, ws, sinceVersion, serverSiteId }) {
 	// do not attempt to send to server
 	// if websocket is not open
 	if (ws.readyState === WebSocket.OPEN) {
-		await database.insertTrackedPeers(serverSiteId);
+		const version = await database.version();
+		await database.insertTrackedPeers(serverSiteId, version, 1);
 		ws.send(
 			JSON.stringify({
 				type: 'update',
 				siteId: database.siteId,
-				version: await database.version(),
+				version,
 				changes
 			})
 		);
@@ -33,7 +34,7 @@ function wsMessageHandler({
 	serverSiteId: string;
 }) {
 	return async function (event: Event) {
-		// Are we over subscribing here? every `store` attaches an event listener
+		// Are we over subscribing here? every `repo` attaches an event listener
 		// maybe there's some kind of queue or something we can use to only apply
 		// appropriate updates
 		if (typeof event.data !== 'string') {
@@ -43,12 +44,17 @@ function wsMessageHandler({
 
 			if ((type === 'update' && siteId !== clientSiteId) || type === 'pull') {
 				await database.merge(changes);
-				await database.insertTrackedPeers(serverSiteId);
+				await database.insertTrackedPeers(serverSiteId, version, 0);
 			}
 
 			if (type === 'connected') {
-				console.log('connected');
-				await pushChangesSince({ database, ws: this, sinceVersion: version, serverSiteId });
+				const [[trackedVersion]] = await database.lastTrackedChangeFor(serverSiteId, 1);
+				await pushChangesSince({
+					database,
+					ws: this,
+					sinceVersion: trackedVersion,
+					serverSiteId
+				});
 			}
 		}
 	};
@@ -73,8 +79,8 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 	let channelListenerAdded = false;
 	const channelSubscribers = new Set();
 	const channel = 'BroadcastChannel' in globalThis ? new globalThis.BroadcastChannel(name) : null;
-	// TODO - rename `query` to `view`
-	const store = ({ watch, query, commands = {} }) => {
+	// TODO - rename `view` to `view`
+	const repo = ({ watch, view, commands = {} }) => {
 		const q = writable([]);
 		databasePromise.then(async (database) => {
 			const ws = await wsPromise;
@@ -86,7 +92,7 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 			// Update other tabs
 			channelSubscribers.add(async (event: MessageEvent) => {
 				if (watch.some((table) => event.data.tables.includes(table))) {
-					await q.set(await query(database.db));
+					await q.set(await view(database.db));
 				}
 			});
 
@@ -110,7 +116,7 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 				}
 			});
 
-			await q.set(await query(database.db));
+			await q.set(await view(database.db));
 		});
 
 		const cmds = Object.fromEntries(
@@ -121,7 +127,7 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 					const db = await databasePromise;
 					const results = await fn(db.db, args);
 
-					const [[sinceVersion]] = await db.lastTrackedChangeFor(serverSiteId);
+					const [[sinceVersion]] = await db.lastTrackedChangeFor(serverSiteId, 1);
 
 					await pushChangesSince({
 						database: db,
@@ -151,7 +157,7 @@ export function db({ databasePromise, wsPromise, serverSiteId, name }) {
 	};
 
 	return {
-		store,
+		repo,
 		database: new Promise((r) => databasePromise.then((db) => r(db)))
 	};
 }

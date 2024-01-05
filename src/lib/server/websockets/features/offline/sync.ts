@@ -7,13 +7,13 @@ import { WebSocket } from 'ws';
 
 const INSERT_CHANGES = `INSERT INTO crsql_changes VALUES (?, unhex(?), ?, ?, ?, ?, unhex(?), ?, ?)`;
 const INSERT_TRACKED_PEERS = `INSERT INTO crsql_tracked_peers (site_id, version, tag, event)
-VALUES (unhex(?), crsql_db_version(), 0, 0)
+VALUES (unhex(?), ?, 0, ?)
 ON CONFLICT([site_id], [tag], [event])
 DO UPDATE SET version=excluded.version`;
 const SELECT_VERSION = `SELECT crsql_db_version() as version;`;
 const SELECT_NON_CLIENT_CHANGES = `SELECT "table", hex("pk") as pk, "cid", "val", "col_version", "db_version", hex("site_id") as site_id, "cl", "seq"
 FROM crsql_changes WHERE site_id != unhex(:clientSiteId) AND db_version > :dbVersion`;
-const SELECT_VERSION_FROM_TRACKED_PEER = `SELECT version FROM crsql_tracked_peers WHERE site_id = unhex(?)`;
+const SELECT_VERSION_FROM_TRACKED_PEER = `SELECT IFNULL(version, 0) version FROM crsql_tracked_peers WHERE site_id = unhex(?) AND event = ?`;
 
 // TODO: review https://github.com/vlcn-io/js/blob/main/packages/ws-server/src/DB.ts
 // see if any edge cases have been missed
@@ -57,7 +57,7 @@ export class Sync {
 			}
 		});
 		const subscription = await subClient.on('messageBuffer', (stream, message) => {
-			sync.insertTrackedPeersStatement.run(clientSiteId);
+			sync.insertTrackedPeersStatement.run(clientSiteId, sync.version, 1);
 			sync.send(message);
 		});
 
@@ -94,7 +94,10 @@ export class Sync {
 		this.nonClientChanges = db.prepare(SELECT_NON_CLIENT_CHANGES);
 		this.versionOfTrackedPeer = db.prepare(SELECT_VERSION_FROM_TRACKED_PEER);
 	}
-
+	get version() {
+		const { version } = this.versionStatement.get();
+		return version;
+	}
 	async onMessage(data) {
 		const parsed = JSON.parse(data.toString());
 		const changes = parsed.changes;
@@ -102,7 +105,7 @@ export class Sync {
 			this.merge(changes);
 
 			const fromSiteId = parsed.siteId;
-			this.insertTrackedPeersStatement.run(fromSiteId);
+			this.insertTrackedPeersStatement.run(fromSiteId, parsed.version, 0);
 
 			this.redisClient.publish(this.stream, data);
 		}
@@ -118,21 +121,21 @@ export class Sync {
 	}
 
 	private pull(clientSiteId: string) {
-		const result = this.versionOfTrackedPeer.get(clientSiteId);
-		const version = result?.version ?? 0;
-		this.send(JSON.stringify({ type: 'connected', siteId: clientSiteId, version }));
+		// const result = this.versionOfTrackedPeer.get(clientSiteId, 0);
+		// const version = result?.version ?? 0;
+		this.send(JSON.stringify({ type: 'connected', siteId: clientSiteId }));
+		// , version }));
 	}
 
 	private push(clientSiteId: string) {
-		const result = this.versionOfTrackedPeer.get(clientSiteId);
+		const result = this.versionOfTrackedPeer.get(clientSiteId, 1);
 		const changes = this.nonClientChanges.all({ clientSiteId, dbVersion: result?.version ?? 0 });
-		const { version } = this.versionStatement.get();
 
 		if (changes.length) {
 			const message = JSON.stringify({
 				type: 'pull',
 				siteId: this.siteId,
-				version,
+				version: this.version,
 				changes: changes.map((change) => Object.values(change))
 			});
 			this.send(message, clientSiteId);
@@ -144,7 +147,7 @@ export class Sync {
 			// Only update if we send the message
 			/// might want an ACK from client before we do this
 			if (clientSiteId) {
-				this.insertTrackedPeersStatement.run(clientSiteId);
+				this.insertTrackedPeersStatement.run(clientSiteId, this.version, 1);
 			}
 			this.ws.send(message, { binary: true });
 		}
